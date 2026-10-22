@@ -1,0 +1,351 @@
+.screen {
+  --canvas: #fff9f5;
+  --surface: #ffffff;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-muted: #a8a09b;
+  --border: #f0e8e3;
+  --input-background: #ffffff;
+  --accent: #d95d39;
+  --accent-hover: #d94f30;
+  --accent-active: #c44428;
+  --focus: #d95d39;
+  --success: #38a873;
+  --error: #d94f4f;
+
+  position: relative;
+  display: flex;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 20px 32px;
+  background: var(--canvas);
+  color: var(--text-primary);
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.screen[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #191614;
+  --surface: #29231f;
+  --text-primary: #f7efe8;
+  --text-secondary: #c5b7ac;
+  --text-muted: #a6988d;
+  --border: #51453d;
+  --input-background: #241f1b;
+  --accent: #f27d60;
+  --accent-hover: #fa9177;
+  --accent-active: #e96a4c;
+  --focus: #ffc0a6;
+  --success: #7bc999;
+  --error: #ff8b82;
+}
+
+.card {
+  width: min(100%, 400px);
+  padding: 32px 30px 24px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 4px 16px rgb(31 41 55 / 5%);
+  text-align: center;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+[data-theme="dark"] .card {
+  box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
+}
+
+.logo {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 14px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 29px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.loginPrompt {
+  margin: 5px 0 24px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.textLink {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 140ms ease;
+}
+
+.textLink:hover {
+  color: var(--accent-hover);
+}
+
+.textLink:focus-visible,
+.themeToggle:focus-visible,
+.visibilityToggle:focus-visible,
+.submitButton:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.form {
+  display: grid;
+  gap: 17px;
+  text-align: left;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.label {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.input {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--input-background);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.4;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background-color 180ms ease;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.input:hover {
+  border-color: var(--text-muted);
+}
+
+.input:focus {
+  border-color: var(--focus);
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 18%, transparent);
+}
+
+.inputError,
+.inputError:hover,
+.inputError:focus {
+  border-color: var(--error);
+}
+
+.passwordField {
+  position: relative;
+}
+
+.passwordField .input {
+  padding-right: 44px;
+}
+
+.visibilityToggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  transform: translateY(-50%);
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.visibilityToggle:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+}
+
+.visibilityToggle svg,
+.themeToggle svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 1.8;
+}
+
+.requirements {
+  display: grid;
+  gap: 5px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.requirement {
+  display: flex;
+  min-height: 16px;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  transition: color 140ms ease;
+}
+
+.requirementMet {
+  color: var(--success);
+}
+
+.requirementIcon {
+  display: grid;
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  place-items: center;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.requirementMet .requirementIcon {
+  width: 14px;
+  height: 14px;
+  flex-basis: 14px;
+}
+
+.requirementIcon svg {
+  width: 11px;
+  height: 11px;
+  stroke-width: 2.5;
+}
+
+.errorText {
+  margin: -7px 0 0;
+  color: var(--error);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.submitButton {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 16px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  transition:
+    background-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 100ms ease;
+}
+
+.submitButton:hover {
+  background: var(--accent-hover);
+}
+
+.submitButton:active {
+  transform: translateY(1px);
+  background: var(--accent-active);
+}
+
+.successMessage {
+  margin: -5px 0 0;
+  color: var(--success);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.terms {
+  margin: 18px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.themeToggle {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.themeToggle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+@media (max-width: 480px) {
+  .screen {
+    padding: 64px 16px 24px;
+  }
+
+  .card {
+    padding: 28px 22px 22px;
+  }
+
+  .title {
+    font-size: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen,
+  .card,
+  .textLink,
+  .input,
+  .visibilityToggle,
+  .requirement,
+  .submitButton,
+  .themeToggle {
+    transition: none;
+  }
+}
