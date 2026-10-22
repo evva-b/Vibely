@@ -16,9 +16,10 @@
   position: relative;
   display: flex;
   min-height: 100vh;
+  min-height: 100svh;
   align-items: center;
   justify-content: center;
-  padding: 56px 20px 32px;
+  padding: 24px 20px;
   background: var(--canvas);
   color: var(--text-primary);
   transition:
@@ -45,7 +46,7 @@
 
 .card {
   width: min(100%, 400px);
-  padding: 32px 30px 24px;
+  padding: clamp(24px, 5vh, 32px) clamp(20px, 7vw, 30px) 24px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
@@ -63,14 +64,14 @@
 
 .logo {
   display: grid;
-  width: 48px;
-  height: 48px;
-  margin: 0 auto 14px;
+  width: 46px;
+  height: 46px;
+  margin: 0 auto 12px;
   place-items: center;
   border-radius: 12px;
   background: var(--accent);
   color: #ffffff;
-  font-size: 29px;
+  font-size: 27px;
   font-weight: 700;
   line-height: 1;
 }
@@ -78,13 +79,13 @@
 .title {
   margin: 0;
   color: var(--text-primary);
-  font-size: 22px;
+  font-size: clamp(20px, 2.5vw, 22px);
   font-weight: 600;
   line-height: 1.35;
 }
 
 .loginPrompt {
-  margin: 5px 0 24px;
+  margin: 5px 0 22px;
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.5;
@@ -102,7 +103,6 @@
 }
 
 .textLink:focus-visible,
-.themeToggle:focus-visible,
 .visibilityToggle:focus-visible,
 .submitButton:focus-visible {
   outline: 3px solid var(--focus);
@@ -113,6 +113,10 @@
   display: grid;
   gap: 17px;
   text-align: left;
+}
+
+.loginForm {
+  gap: 15px;
 }
 
 .field {
@@ -130,7 +134,7 @@
 .input {
   width: 100%;
   min-height: 42px;
-  padding: 10px 12px;
+  padding: 9px 12px;
   border: 1px solid var(--border);
   border-radius: 5px;
   background: var(--input-background);
@@ -175,12 +179,14 @@
 .visibilityToggle {
   position: absolute;
   top: 50%;
-  right: 8px;
-  display: grid;
-  width: 30px;
-  height: 30px;
+  right: 6px;
+  display: flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   transform: translateY(-50%);
-  place-items: center;
   border: 0;
   border-radius: 4px;
   background: transparent;
@@ -196,10 +202,11 @@
   color: var(--accent);
 }
 
-.visibilityToggle svg,
-.themeToggle svg {
+.visibilityToggle svg {
+  display: block;
   width: 17px;
   height: 17px;
+  flex: 0 0 auto;
   stroke-width: 1.8;
 }
 
@@ -255,6 +262,31 @@
   line-height: 1.45;
 }
 
+.rememberRow {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.checkbox {
+  flex: 0 0 15px;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.checkbox:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
 .submitButton {
   display: flex;
   width: 100%;
@@ -299,41 +331,32 @@
   line-height: 1.45;
 }
 
-.themeToggle {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  display: grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  background: var(--surface);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition:
-    background-color 140ms ease,
-    border-color 140ms ease,
-    color 140ms ease;
-}
-
-.themeToggle:hover {
-  color: var(--accent);
-  border-color: var(--accent);
+.loginCard {
+  transform: translateY(clamp(-16px, -2vh, -8px));
 }
 
 @media (max-width: 480px) {
   .screen {
-    padding: 64px 16px 24px;
+    padding: 20px 16px;
   }
 
   .card {
-    padding: 28px 22px 22px;
+    padding: 26px 22px 22px;
   }
 
-  .title {
-    font-size: 20px;
+  .loginCard {
+    transform: translateY(-8px);
+  }
+}
+
+@media (max-height: 480px) {
+  .screen {
+    align-items: flex-start;
+  }
+
+  .loginCard {
+    margin-block: 12px;
+    transform: none;
   }
 }
 
@@ -345,7 +368,7 @@
   .visibilityToggle,
   .requirement,
   .submitButton,
-  .themeToggle {
+  .loginCard {
     transition: none;
   }
 }

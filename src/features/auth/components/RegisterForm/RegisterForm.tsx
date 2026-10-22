@@ -2,7 +2,11 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Check, Eye, EyeOff, Moon, Sun } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Check, Eye, EyeOff } from "lucide-react";
+import { useTheme } from "@/components/theme/ThemeProvider";
+import { saveMockUser } from "@/features/auth/lib/local-auth";
+import { isValidEmail } from "@/features/auth/lib/validation";
 import styles from "./RegisterForm.module.css";
 
 type PasswordRule = {
@@ -29,18 +33,14 @@ const passwordRules: PasswordRule[] = [
   },
 ];
 
-function isValidEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
 export default function RegisterForm() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isDark, setIsDark] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [message, setMessage] = useState("");
+  const { theme } = useTheme();
 
   const emailIsValid = isValidEmail(email);
   const passwordIsValid = passwordRules.every((rule) =>
@@ -51,31 +51,17 @@ export default function RegisterForm() {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitted(true);
-    setMessage("");
 
     if (!emailIsValid || !passwordIsValid) {
       return;
     }
 
-    setMessage(
-      "Данные проверены. Создание аккаунта станет доступно после подключения сервера.",
-    );
+    saveMockUser(email);
+    router.push("/board");
   }
 
   return (
-    <main
-      className={styles.screen}
-      data-theme={isDark ? "dark" : "light"}
-    >
-      <button
-        aria-label={isDark ? "Включить светлую тему" : "Включить тёмную тему"}
-        className={styles.themeToggle}
-        onClick={() => setIsDark((current) => !current)}
-        type="button"
-      >
-        {isDark ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
-      </button>
-
+    <main className={styles.screen} data-theme={theme}>
       <section aria-labelledby="register-title" className={styles.card}>
         <div aria-hidden="true" className={styles.logo}>
           V
@@ -104,10 +90,7 @@ export default function RegisterForm() {
               id="register-email"
               name="email"
               onBlur={() => setEmailTouched(true)}
-              onChange={(event) => {
-                setEmail(event.target.value);
-                setMessage("");
-              }}
+              onChange={(event) => setEmail(event.target.value)}
               placeholder="name@example.com"
               type="email"
               value={email}
@@ -131,10 +114,7 @@ export default function RegisterForm() {
                 className={styles.input}
                 id="register-password"
                 name="password"
-                onChange={(event) => {
-                  setPassword(event.target.value);
-                  setMessage("");
-                }}
+                onChange={(event) => setPassword(event.target.value)}
                 placeholder="Введите пароль"
                 type={showPassword ? "text" : "password"}
                 value={password}
@@ -190,11 +170,6 @@ export default function RegisterForm() {
             Зарегистрироваться
           </button>
 
-          {message && (
-            <p className={styles.successMessage} role="status">
-              {message}
-            </p>
-          )}
         </form>
 
         <p className={styles.terms}>
