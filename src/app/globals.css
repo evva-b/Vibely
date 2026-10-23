@@ -24,6 +24,12 @@ html[data-theme="dark"] {
   --app-surface: #29231f;
 }
 
+html,
+body {
+  min-height: 100%;
+  background-color: var(--app-background);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -67,6 +73,14 @@ input {
     background-color 140ms ease,
     border-color 140ms ease,
     color 140ms ease;
+}
+
+.theme-toggle--inline {
+  position: static;
+  z-index: auto;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
 }
 
 .theme-toggle:hover {

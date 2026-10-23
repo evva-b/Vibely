@@ -60,6 +60,27 @@ export function useTheme() {
   return context;
 }
 
+export function ThemeToggle({ inline = false }: { inline?: boolean }) {
+  const { theme, toggleTheme } = useTheme();
+
+  return (
+    <button
+      aria-label={
+        theme === "light" ? "Включить тёмную тему" : "Включить светлую тему"
+      }
+      className={`theme-toggle${inline ? " theme-toggle--inline" : ""}`}
+      onClick={toggleTheme}
+      type="button"
+    >
+      {theme === "light" ? (
+        <Moon aria-hidden="true" />
+      ) : (
+        <Sun aria-hidden="true" />
+      )}
+    </button>
+  );
+}
+
 export default function ThemeProvider({ children }: { children: ReactNode }) {
   const theme = useSyncExternalStore(
     subscribeToTheme,
@@ -80,22 +101,6 @@ export default function ThemeProvider({ children }: { children: ReactNode }) {
   return (
     <ThemeContext.Provider value={contextValue}>
       {children}
-      <button
-        aria-label={
-          theme === "light"
-            ? "Включить тёмную тему"
-            : "Включить светлую тему"
-        }
-        className="theme-toggle"
-        onClick={toggleTheme}
-        type="button"
-      >
-        {theme === "light" ? (
-          <Moon aria-hidden="true" />
-        ) : (
-          <Sun aria-hidden="true" />
-        )}
-      </button>
     </ThemeContext.Provider>
   );
 }

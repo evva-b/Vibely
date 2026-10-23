@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { ThemeToggle } from "@/components/theme/ThemeProvider";
 import {
   ArrowRight,
   ImagePlus,
@@ -70,6 +71,7 @@ function IdeaDialog({
   const [title, setTitle] = useState(idea?.title ?? "");
   const [description, setDescription] = useState(idea?.description ?? "");
   const [status, setStatus] = useState(idea?.status ?? initialStatus);
+  const [topic, setTopic] = useState(idea?.topic ?? "");
   const [image, setImage] = useState(idea?.image ?? "");
   const [error, setError] = useState("");
 
@@ -127,16 +129,46 @@ function IdeaDialog({
       return;
     }
 
+    const submitter = (event.nativeEvent as SubmitEvent)
+      .submitter as HTMLButtonElement | null;
+    const savedStatus =
+      submitter?.value === "draft"
+        ? "draft"
+        : !idea && status === "draft"
+          ? "todo"
+          : status;
+
     onSave(
       {
         title: cleanTitle,
         description: description.trim(),
-        status,
+        status: savedStatus,
+        topic,
         ...(image ? { image } : {}),
       },
       idea?.id,
     );
   }
+
+  function addStructure() {
+    const cleanTitle = title.trim();
+    if (!cleanTitle) {
+      setError("Сначала укажите тему идеи.");
+      return;
+    }
+
+    setDescription(
+      `Цель: ${cleanTitle}\n\nОсновные тезисы:\n• \n• \n\nПризыв к действию:`,
+    );
+    setError("");
+  }
+
+  const templates = [
+    { label: "Знакомство с брендом", title: "Знакомство с брендом" },
+    { label: "Полезный совет", title: "Полезный совет для аудитории" },
+    { label: "История клиента", title: "История нашего клиента" },
+    { label: "Закулисье", title: "Один день за кулисами" },
+  ];
 
   return (
     <div
@@ -154,83 +186,128 @@ function IdeaDialog({
         role="dialog"
       >
         <div className={styles.dialogHeader}>
-          <div>
+          <div className={styles.dialogHeading}>
             <span className={styles.eyebrow}>ИДЕИ ДЛЯ КОНТЕНТА</span>
             <h2 className={styles.dialogTitle} id="idea-dialog-title">
-              {idea ? "Редактировать идею" : "Новая идея"}
+              {idea ? "Редактировать идею" : "Создать идею"}
             </h2>
+            <p>Соберите мысли в основу будущей публикации.</p>
           </div>
-          <button
-            aria-label="Закрыть окно"
-            className={styles.iconButton}
-            onClick={onClose}
-            type="button"
-          >
-            <X aria-hidden="true" />
-          </button>
+          <div className={styles.dialogHeaderActions}>
+            <label className={styles.dialogSelect}>
+              <span className={styles.visuallyHidden}>Статус идеи</span>
+              <select
+                onChange={(event) => setStatus(event.target.value as IdeaStatus)}
+                value={status}
+              >
+                {ideaStatuses.map((ideaStatus) => (
+                  <option key={ideaStatus} value={ideaStatus}>
+                    {statusLabels[ideaStatus]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className={styles.dialogSelect}>
+              <span className={styles.visuallyHidden}>Тема идеи</span>
+              <select
+                onChange={(event) => setTopic(event.target.value)}
+                value={topic}
+              >
+                <option value="">Без темы</option>
+                <option value="Продукт">Продукт</option>
+                <option value="Образование">Образование</option>
+                <option value="Личный бренд">Личный бренд</option>
+                <option value="Закулисье">Закулисье</option>
+              </select>
+            </label>
+            <button
+              aria-label="Закрыть окно"
+              className={styles.iconButton}
+              onClick={onClose}
+              type="button"
+            >
+              <X aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         <form className={styles.dialogForm} onSubmit={handleSubmit}>
-          <label className={styles.formField}>
-            <span>Название</span>
+          <div className={styles.ideaPrompt}>
+            <label className={styles.visuallyHidden} htmlFor="idea-title">
+              Краткое название идеи
+            </label>
             <input
               autoFocus
+              id="idea-title"
               maxLength={90}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="Например, идея для нового поста"
+              placeholder="О чём будет ваша идея?"
               value={title}
             />
-          </label>
+            <button
+              className={styles.structureButton}
+              onClick={addStructure}
+              type="button"
+            >
+              <Sparkles aria-hidden="true" />
+              <span>Подсказать структуру</span>
+            </button>
+          </div>
 
-          <label className={styles.formField}>
-            <span>Описание</span>
+          <div className={styles.templateSection}>
+            <span className={styles.sectionLabel}>Быстрый старт</span>
+            <div className={styles.templateList}>
+              {templates.map((template) => (
+                <button
+                  className={styles.templateChip}
+                  key={template.label}
+                  onClick={() => {
+                    setTitle(template.title);
+                    setError("");
+                  }}
+                  type="button"
+                >
+                  {template.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label className={styles.notesField}>
+            <span className={styles.sectionLabel}>Заметки и тезисы</span>
             <textarea
               maxLength={500}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="Добавьте детали, формат или заметки"
-              rows={4}
+              placeholder="Добавьте детали, основные мысли или черновик текста..."
+              rows={6}
               value={description}
             />
+            <span className={styles.characterCount}>{description.length}/500</span>
           </label>
 
-          <label className={styles.formField}>
-            <span>Колонка</span>
-            <select
-              onChange={(event) => setStatus(event.target.value as IdeaStatus)}
-              value={status}
-            >
-              {ideaStatuses.map((ideaStatus) => (
-                <option key={ideaStatus} value={ideaStatus}>
-                  {statusLabels[ideaStatus]}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className={styles.formField}>
-            <span>Изображение</span>
+          <div className={styles.attachmentRow}>
             {image ? (
               <div className={styles.imagePreview}>
                 <Image
                   alt="Предпросмотр изображения идеи"
-                  height={360}
+                  height={96}
                   src={image}
                   unoptimized
-                  width={640}
+                  width={128}
                 />
                 <button
+                  aria-label="Удалить изображение"
                   className={styles.removeImageButton}
                   onClick={() => setImage("")}
                   type="button"
                 >
                   <X aria-hidden="true" />
-                  Удалить изображение
                 </button>
               </div>
             ) : (
               <label className={styles.uploadButton}>
                 <ImagePlus aria-hidden="true" />
-                <span>Прикрепить изображение</span>
+                <span>Добавить изображение</span>
                 <input
                   accept="image/*"
                   className={styles.visuallyHidden}
@@ -239,7 +316,7 @@ function IdeaDialog({
                 />
               </label>
             )}
-            <span className={styles.hint}>Изображение до 2 МБ</span>
+            <span className={styles.hint}>PNG, JPG или WEBP · до 2 МБ</span>
           </div>
 
           {error && (
@@ -251,13 +328,19 @@ function IdeaDialog({
           <div className={styles.dialogActions}>
             <button
               className={styles.secondaryButton}
-              onClick={onClose}
-              type="button"
+              name="saveMode"
+              type="submit"
+              value="draft"
             >
-              Отмена
+              Сохранить в черновик
             </button>
-            <button className={styles.primaryButton} type="submit">
-              {idea ? "Сохранить" : "Добавить идею"}
+            <button
+              className={styles.primaryButton}
+              name="saveMode"
+              type="submit"
+              value="publish"
+            >
+              {idea ? "Сохранить изменения" : "Создать публикацию"}
             </button>
           </div>
         </form>
@@ -362,6 +445,7 @@ export default function Board() {
             <Plus aria-hidden="true" />
             <span>Новая идея</span>
           </button>
+          <ThemeToggle inline />
           <details className={styles.accountMenu}>
             <summary aria-label="Меню профиля">
               <UserRound aria-hidden="true" />
@@ -491,6 +575,9 @@ export default function Board() {
                             </button>
                           </div>
                         </div>
+                        {idea.topic && (
+                          <span className={styles.ideaTopic}>{idea.topic}</span>
+                        )}
                         {idea.description && (
                           <p className={styles.ideaDescription}>
                             {idea.description}

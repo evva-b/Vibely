@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
-import { useTheme } from "@/components/theme/ThemeProvider";
+import { ThemeToggle, useTheme } from "@/components/theme/ThemeProvider";
 import { saveMockUser } from "@/features/auth/lib/local-auth";
 import { isValidEmail } from "@/features/auth/lib/validation";
 import styles from "../RegisterForm/RegisterForm.module.css";
@@ -37,6 +37,7 @@ export default function LoginForm() {
 
   return (
     <main className={styles.screen} data-theme={theme}>
+      <ThemeToggle />
       <section
         aria-labelledby="login-title"
         className={`${styles.card} ${styles.loginCard}`}

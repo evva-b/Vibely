@@ -8,6 +8,7 @@ export type Idea = {
   description: string;
   status: IdeaStatus;
   image?: string;
+  topic?: string;
   updatedAt: number;
 };
 

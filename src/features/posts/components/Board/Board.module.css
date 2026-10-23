@@ -19,6 +19,7 @@
 }
 
 :global(html[data-theme="dark"]) .app {
+  --board-canvas: var(--app-background, #191614);
   --column-background: #211c19;
   --card-background: #29231f;
   --soft-accent: #3a2923;
@@ -34,7 +35,7 @@
   grid-template-columns: minmax(150px, 1fr) auto minmax(150px, 1fr);
   align-items: center;
   gap: 24px;
-  padding: 0 clamp(68px, 6vw, 96px) 0 clamp(18px, 3vw, 44px);
+  padding: 0 clamp(18px, 3vw, 44px);
   border-bottom: 1px solid var(--board-border);
   background: var(--board-surface);
 }
@@ -488,6 +489,17 @@
   -webkit-line-clamp: 4;
 }
 
+.ideaTopic {
+  display: inline-flex;
+  margin-top: 8px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--soft-accent);
+  color: var(--board-accent);
+  font-size: 10px;
+  font-weight: 550;
+}
+
 .moveControl {
   display: flex;
   width: fit-content;
@@ -577,12 +589,12 @@
 }
 
 .dialog {
-  width: min(100%, 480px);
-  max-height: min(90vh, 760px);
+  width: min(100%, 880px);
+  max-height: min(90vh, 820px);
   overflow-y: auto;
-  padding: 22px;
+  padding: clamp(20px, 3vw, 34px);
   border: 1px solid var(--board-border);
-  border-radius: 12px;
+  border-radius: 16px;
   background: var(--board-surface);
   box-shadow: 0 24px 70px rgb(20 15 12 / 22%);
   color: var(--board-text);
@@ -590,91 +602,215 @@
 
 .dialogHeader {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 20px;
+  margin-bottom: 26px;
 }
 
 .dialogHeader .eyebrow {
   color: var(--board-accent);
-  font-size: 9px;
+  font-size: 10px;
+}
+
+.dialogHeading p {
+  margin: 7px 0 0;
+  color: var(--board-muted);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .dialogTitle {
   margin: 0;
-  font-size: 21px;
+  font-size: clamp(21px, 3vw, 26px);
   font-weight: 650;
   letter-spacing: -0.025em;
 }
 
+.dialogHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.dialogSelect select {
+  max-width: 160px;
+  min-height: 36px;
+  padding: 0 28px 0 11px;
+  border: 1px solid var(--board-border);
+  border-radius: 7px;
+  appearance: none;
+  background:
+    linear-gradient(45deg, transparent 50%, var(--board-muted) 50%) right 12px
+      center / 5px 5px no-repeat,
+    linear-gradient(135deg, var(--board-muted) 50%, transparent 50%) right 8px
+      center / 5px 5px no-repeat,
+    var(--board-surface);
+  color: var(--board-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+
 .dialogForm {
   display: grid;
-  gap: 16px;
+  gap: 22px;
 }
 
-.formField {
-  display: grid;
-  gap: 7px;
+.ideaPrompt {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 7px 6px 16px;
+  border: 1px solid var(--board-border);
+  border-radius: 9px;
+  background: var(--board-surface);
+}
+
+.ideaPrompt:focus-within {
+  border-color: var(--board-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--board-accent) 14%, transparent);
+}
+
+.ideaPrompt input {
+  width: 100%;
+  outline: none;
+  border: 0;
+  background: transparent;
   color: var(--board-text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.ideaPrompt input::placeholder,
+.notesField textarea::placeholder {
+  color: var(--board-muted);
+  opacity: 0.8;
+}
+
+.structureButton {
+  display: inline-flex;
+  min-height: 39px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--soft-accent);
+  color: var(--board-accent);
+  cursor: pointer;
+  font: inherit;
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
-.formField input:not([type="file"]),
-.formField textarea,
-.formField select {
-  width: 100%;
-  min-height: 40px;
-  padding: 9px 11px;
+.structureButton:hover {
+  filter: brightness(0.97);
+}
+
+.structureButton svg {
+  width: 15px;
+  height: 15px;
+}
+
+.templateSection {
+  display: grid;
+  gap: 11px;
+}
+
+.sectionLabel {
+  color: var(--board-text);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.templateList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.templateChip {
+  min-height: 32px;
+  padding: 0 11px;
   border: 1px solid var(--board-border);
-  border-radius: 6px;
+  border-radius: 999px;
+  background: var(--board-surface);
+  color: var(--board-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  transition:
+    border-color 140ms ease,
+    color 140ms ease,
+    background-color 140ms ease;
+}
+
+.templateChip:hover {
+  border-color: color-mix(in srgb, var(--board-accent) 45%, transparent);
+  background: var(--soft-accent);
+  color: var(--board-accent);
+}
+
+.notesField {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  color: var(--board-text);
+}
+
+.notesField textarea {
+  width: 100%;
+  min-height: 180px;
+  padding: 13px 14px 30px;
+  border: 1px solid var(--board-border);
+  border-radius: 9px;
   outline: none;
   background: var(--board-surface);
   color: var(--board-text);
   font: inherit;
   font-size: 13px;
-  font-weight: 400;
-  transition:
-    border-color 140ms ease,
-    box-shadow 140ms ease;
-}
-
-.formField textarea {
-  min-height: 92px;
+  line-height: 1.6;
   resize: vertical;
 }
 
-.formField input:focus,
-.formField textarea:focus,
-.formField select:focus {
+.notesField textarea:focus {
   border-color: var(--board-accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--board-accent) 16%, transparent);
 }
 
-.formField input::placeholder,
-.formField textarea::placeholder {
+.characterCount {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
   color: var(--board-muted);
-  opacity: 0.8;
+  font-size: 10px;
+  font-weight: 400;
 }
 
 .uploadButton {
-  display: flex;
-  min-height: 68px;
+  display: inline-flex;
+  min-height: 36px;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px dashed color-mix(in srgb, var(--board-accent) 40%, var(--board-border));
+  padding: 0 11px;
+  border: 1px solid var(--board-border);
   border-radius: 7px;
-  background: color-mix(in srgb, var(--board-accent) 4%, var(--board-surface));
-  color: var(--board-accent);
+  background: var(--board-surface);
+  color: var(--board-text);
   cursor: pointer;
-  font-size: 12px;
-  font-weight: 550;
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .uploadButton:hover {
-  background: color-mix(in srgb, var(--board-accent) 9%, var(--board-surface));
+  border-color: var(--board-accent);
+  color: var(--board-accent);
 }
 
 .uploadButton svg {
@@ -703,37 +839,46 @@
   font-weight: 400;
 }
 
+.attachmentRow {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 11px;
+}
+
 .imagePreview {
-  position: relative;
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
   border: 1px solid var(--board-border);
   border-radius: 7px;
 }
 
 .imagePreview img {
   display: block;
-  width: 100%;
-  max-height: 220px;
-  object-fit: contain;
+  width: 52px;
+  height: 40px;
+  border-radius: 4px;
+  object-fit: cover;
   background: var(--column-background);
 }
 
 .removeImageButton {
-  display: flex;
-  min-height: 34px;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
   border: 0;
-  background: var(--board-surface);
+  border-radius: 5px;
+  background: transparent;
   color: var(--board-muted);
   cursor: pointer;
-  font: inherit;
-  font-size: 11px;
 }
 
 .removeImageButton:hover {
+  background: var(--soft-accent);
   color: #c44428;
 }
 
@@ -753,7 +898,9 @@
   display: flex;
   justify-content: flex-end;
   gap: 9px;
-  margin-top: 4px;
+  margin-top: 1px;
+  padding-top: 17px;
+  border-top: 1px solid var(--board-border);
 }
 
 .secondaryButton {
@@ -796,7 +943,7 @@ summary:focus-visible {
     min-height: 58px;
     grid-template-columns: 1fr auto;
     gap: 8px;
-    padding: 0 60px 0 14px;
+    padding: 0 14px;
   }
 
   .brand {
@@ -839,7 +986,7 @@ summary:focus-visible {
   }
 
   .boardSection {
-    padding: 122px 14px 28px;
+    padding: 56px 14px calc(84px + env(safe-area-inset-bottom));
   }
 
   .boardHeading {
@@ -861,31 +1008,112 @@ summary:focus-visible {
   }
 
   .board {
-    min-height: calc(100svh - 220px);
-    grid-template-columns: repeat(4, minmax(260px, 82vw));
-    gap: 10px;
-    margin-right: -14px;
-    padding-right: 14px;
-    scroll-snap-type: x mandatory;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    overflow: visible;
+    padding: 0;
   }
 
   .column {
-    min-height: 380px;
-    scroll-snap-align: start;
+    min-height: 0;
+    padding: 12px;
+  }
+
+  .cardList {
+    min-height: 0;
+    flex: initial;
   }
 
   .ideaActions {
     opacity: 1;
   }
 
-  .chatShortcut {
-    right: 16px;
-    bottom: 18px;
-    display: grid;
+  .emptyAddButton {
+    min-height: 60px;
+    flex: initial;
+  }
+
+  .dialogBackdrop {
+    align-items: start;
+    padding: 12px;
   }
 
   .dialog {
-    padding: 19px;
+    max-height: calc(100svh - 24px);
+    padding: 20px 16px;
+    border-radius: 13px;
+  }
+
+  .dialogHeader {
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .dialogHeaderActions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .dialogSelect select {
+    max-width: 115px;
+    min-height: 32px;
+    padding-left: 8px;
+    font-size: 10px;
+  }
+
+  .dialogHeaderActions .iconButton {
+    width: 32px;
+    height: 32px;
+  }
+
+  .dialogHeading p {
+    max-width: 220px;
+    font-size: 11px;
+  }
+
+  .dialogForm {
+    gap: 17px;
+  }
+
+  .ideaPrompt {
+    min-height: 48px;
+    flex-wrap: wrap;
+    padding: 8px;
+  }
+
+  .ideaPrompt input {
+    min-width: 0;
+    min-height: 32px;
+    padding: 0 4px;
+    font-size: 12px;
+  }
+
+  .structureButton {
+    min-height: 34px;
+    margin-left: auto;
+    font-size: 10px;
+  }
+
+  .notesField textarea {
+    min-height: 140px;
+  }
+
+  .dialogActions {
+    flex-direction: column-reverse;
+  }
+
+  .dialogActions .primaryButton,
+  .dialogActions .secondaryButton {
+    width: 100%;
+  }
+
+  .chatShortcut {
+    right: 16px;
+    bottom: calc(18px + env(safe-area-inset-bottom));
+    display: grid;
   }
 }
 
@@ -899,9 +1127,9 @@ summary:focus-visible {
   .cardAction,
   .ideaCard,
   .emptyAddButton,
-  .formField input,
-  .formField textarea,
-  .formField select {
+  .ideaPrompt input,
+  .notesField textarea,
+  .dialogSelect select {
     transition: none;
   }
 }

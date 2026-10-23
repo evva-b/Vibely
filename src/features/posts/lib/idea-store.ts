@@ -41,7 +41,8 @@ function parseIdeas(serialized: string | null): Idea[] {
             idea.status === "done") &&
           "updatedAt" in idea &&
           typeof idea.updatedAt === "number" &&
-          (!("image" in idea) || typeof idea.image === "string"),
+          (!("image" in idea) || typeof idea.image === "string") &&
+          (!("topic" in idea) || typeof idea.topic === "string"),
       )
     ) {
       return parsed;
