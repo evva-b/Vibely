@@ -21,7 +21,12 @@ const STORAGE_KEY = "vibely-theme";
 const subscribers = new Set<() => void>();
 
 function getThemeSnapshot(): Theme {
-  return window.localStorage.getItem(STORAGE_KEY) === "dark" ? "dark" : "light";
+  try {
+    return window.localStorage.getItem(STORAGE_KEY) === "dark" ? "dark" : "light";
+  } catch (error) {
+    console.error("Не удалось прочитать сохранённую тему.", error);
+    return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  }
 }
 
 function getServerThemeSnapshot(): Theme {
@@ -46,8 +51,21 @@ function subscribeToTheme(callback: () => void) {
 }
 
 function saveTheme(theme: Theme) {
-  window.localStorage.setItem(STORAGE_KEY, theme);
+  try {
+    window.localStorage.setItem(STORAGE_KEY, theme);
+  } catch (error) {
+    console.error("Не удалось сохранить выбранную тему.", error);
+  }
   subscribers.forEach((callback) => callback());
+}
+
+function applyTheme(theme: Theme) {
+  const root = document.documentElement;
+  root.dataset.themeChanging = "true";
+  root.dataset.theme = theme;
+  window.setTimeout(() => {
+    delete root.dataset.themeChanging;
+  }, 120);
 }
 
 export function useTheme() {
@@ -89,11 +107,15 @@ export default function ThemeProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
+    if (document.documentElement.dataset.theme !== theme) {
+      applyTheme(theme);
+    }
   }, [theme]);
 
   function toggleTheme() {
-    saveTheme(theme === "light" ? "dark" : "light");
+    const nextTheme = theme === "light" ? "dark" : "light";
+    applyTheme(nextTheme);
+    saveTheme(nextTheme);
   }
 
   const contextValue = { theme, toggleTheme };

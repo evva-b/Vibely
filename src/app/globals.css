@@ -17,11 +17,14 @@
 
 html[data-theme="dark"] {
   color-scheme: dark;
-  --app-background: #191614;
+  --app-background: #151210;
   --app-foreground: #f7efe8;
-  --app-muted: #c5b7ac;
-  --app-accent: #f27d60;
+  --app-muted: #cbbcaf;
+  --app-accent: #f38b69;
   --app-surface: #29231f;
+  --app-border: #51453d;
+  --app-input: #1e1916;
+  --app-raised: #302822;
 }
 
 html,
@@ -39,9 +42,13 @@ body {
   margin: 0;
   background: var(--app-background);
   color: var(--app-foreground);
-  transition:
-    background-color 180ms ease,
-    color 180ms ease;
+}
+
+html[data-theme-changing="true"] *,
+html[data-theme-changing="true"] *::before,
+html[data-theme-changing="true"] *::after {
+  transition: none !important;
+  animation: none !important;
 }
 
 button,

@@ -38,6 +38,12 @@ import {
   subscribeToIdeas,
   updateIdeas,
 } from "@/features/posts/lib/idea-store";
+import {
+  clearIdeaDialogOpenRequest,
+  getIdeaDialogOpenRequest,
+  getServerIdeaDialogOpenRequest,
+  subscribeToIdeaDialogOpenRequest,
+} from "@/features/posts/lib/idea-dialog-navigation";
 import styles from "./Board.module.css";
 
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
@@ -51,7 +57,7 @@ function formatIdeaCount(count: number) {
   return `${count} ${noun}`;
 }
 
-type IdeaDialogProps = {
+export type IdeaDialogProps = {
   idea?: Idea;
   initialStatus: IdeaStatus;
   onClose: () => void;
@@ -62,7 +68,7 @@ function createId() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 }
 
-function IdeaDialog({
+export function IdeaDialog({
   idea,
   initialStatus,
   onClose,
@@ -361,6 +367,11 @@ export default function Board() {
     getStorageErrorSnapshot,
     () => "",
   );
+  const openDialogRequested = useSyncExternalStore(
+    subscribeToIdeaDialogOpenRequest,
+    getIdeaDialogOpenRequest,
+    getServerIdeaDialogOpenRequest,
+  );
   const [dialogStatus, setDialogStatus] = useState<IdeaStatus | null>(null);
   const [editingIdea, setEditingIdea] = useState<Idea | null>(null);
   const [draggedIdeaId, setDraggedIdeaId] = useState<string | null>(null);
@@ -630,15 +641,19 @@ export default function Board() {
         <MessageCircle aria-hidden="true" />
       </Link>
 
-      {(dialogStatus || editingIdea) && (
+      {(dialogStatus || editingIdea || openDialogRequested) && (
         <IdeaDialog
           idea={editingIdea ?? undefined}
           initialStatus={dialogStatus ?? editingIdea?.status ?? "draft"}
           onClose={() => {
             setDialogStatus(null);
             setEditingIdea(null);
+            clearIdeaDialogOpenRequest();
           }}
-          onSave={saveIdea}
+          onSave={(idea, id) => {
+            saveIdea(idea, id);
+            clearIdeaDialogOpenRequest();
+          }}
         />
       )}
     </main>

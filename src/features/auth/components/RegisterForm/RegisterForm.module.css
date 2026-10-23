@@ -29,16 +29,16 @@
 
 .screen[data-theme="dark"] {
   color-scheme: dark;
-  --canvas: #191614;
+  --canvas: #151210;
   --surface: #29231f;
   --text-primary: #f7efe8;
-  --text-secondary: #c5b7ac;
-  --text-muted: #a6988d;
-  --border: #51453d;
-  --input-background: #241f1b;
-  --accent: #f27d60;
-  --accent-hover: #fa9177;
-  --accent-active: #e96a4c;
+  --text-secondary: #cbbcaf;
+  --text-muted: #b6a79b;
+  --border: #5b4d43;
+  --input-background: #1e1916;
+  --accent: #f38b69;
+  --accent-hover: #ffa080;
+  --accent-active: #e97552;
   --focus: #ffc0a6;
   --success: #7bc999;
   --error: #ff8b82;

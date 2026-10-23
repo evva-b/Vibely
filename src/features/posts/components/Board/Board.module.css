@@ -20,9 +20,10 @@
 
 :global(html[data-theme="dark"]) .app {
   --board-canvas: var(--app-background, #191614);
-  --column-background: #211c19;
-  --card-background: #29231f;
-  --soft-accent: #3a2923;
+  --column-background: #201a17;
+  --card-background: #2d2621;
+  --soft-accent: #442e25;
+  --board-border: var(--app-border, #51453d);
   --card-shadow: 0 4px 14px rgb(0 0 0 / 16%);
 }
 

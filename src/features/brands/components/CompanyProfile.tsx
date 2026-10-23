@@ -22,6 +22,7 @@ import {
   subscribeToCompanyProfile,
   type CompanyProfileData,
 } from "@/features/brands/lib/company-profile-store";
+import { requestIdeaDialogOpen } from "@/features/posts/lib/idea-dialog-navigation";
 import styles from "./CompanyProfile.module.css";
 
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
@@ -152,10 +153,17 @@ export default function CompanyProfile() {
         </nav>
 
         <div className={styles.topbarActions}>
-          <Link className={styles.primaryButton} href="/board">
+          <button
+            className={styles.primaryButton}
+            onClick={() => {
+              requestIdeaDialogOpen();
+              router.push("/board");
+            }}
+            type="button"
+          >
             <Plus aria-hidden="true" />
             <span>Новая идея</span>
-          </Link>
+          </button>
           <ThemeToggle inline />
           <details className={styles.accountMenu}>
             <summary aria-label="Меню профиля">
