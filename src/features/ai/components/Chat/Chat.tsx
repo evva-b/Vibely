@@ -44,9 +44,7 @@ import {
   type ChatMessage,
   type Conversation,
 } from "@/features/ai/lib/chat-store";
-import {
-  IdeaDialog,
-} from "@/features/posts/components/Board/Board";
+import IdeaDialog from "@/features/posts/components/Board/IdeaDialog";
 import {
   getIdeasSnapshot,
   getServerIdeasSnapshot,

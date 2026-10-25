@@ -57,7 +57,7 @@ function formatIdeaCount(count: number) {
   return `${count} ${noun}`;
 }
 
-export type IdeaDialogProps = {
+type IdeaDialogProps = {
   idea?: Idea;
   initialStatus: IdeaStatus;
   onClose: () => void;
@@ -68,7 +68,7 @@ function createId() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 }
 
-export function IdeaDialog({
+function IdeaDialog({
   idea,
   initialStatus,
   onClose,
