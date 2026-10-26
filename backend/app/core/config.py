@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     jwt_secret_key: SecretStr
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = Field(default=30, gt=0)
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_model: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",

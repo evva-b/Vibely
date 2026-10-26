@@ -9,6 +9,7 @@ from app.db.session import get_db_session
 from app.dependencies.auth import get_current_user
 from app.models import (
     AdaptedContent,
+    AIRequest,
     Brand,
     MediaFile,
     Post,
@@ -144,6 +145,27 @@ def get_current_user_media(
     return media
 
 
+def get_current_user_ai_request(
+    ai_request_id: UUID,
+    session: Annotated[Session, Depends(get_db_session)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> AIRequest:
+    ai_request = session.scalar(
+        select(AIRequest)
+        .join(Brand, AIRequest.brand_id == Brand.id)
+        .where(
+            AIRequest.id == ai_request_id,
+            Brand.user_id == current_user.id,
+        )
+    )
+    if ai_request is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="AI request not found",
+        )
+    return ai_request
+
+
 CurrentUserBrand = Annotated[Brand, Depends(get_current_user_brand)]
 CurrentUserTopic = Annotated[Topic, Depends(get_current_user_topic)]
 CurrentUserTemplate = Annotated[Template, Depends(get_current_user_template)]
@@ -153,3 +175,7 @@ CurrentUserAdaptation = Annotated[
     Depends(get_current_user_adaptation),
 ]
 CurrentUserMedia = Annotated[MediaFile, Depends(get_current_user_media)]
+CurrentUserAIRequest = Annotated[
+    AIRequest,
+    Depends(get_current_user_ai_request),
+]

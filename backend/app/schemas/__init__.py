@@ -3,6 +3,14 @@ from app.schemas.adapted_content import (
     AdaptedContentRead,
     AdaptedContentUpdate,
 )
+from app.schemas.ai import (
+    AdaptationGenerateRequest,
+    GeneratedAdaptationContent,
+    GeneratedAdaptationRead,
+    GeneratedPostContent,
+    GeneratedPostRead,
+    PostGenerateRequest,
+)
 from app.schemas.ai_request import AIRequestRead
 from app.schemas.board import BoardColumnRead
 from app.schemas.board_status import BoardStatusRead
@@ -23,6 +31,7 @@ __all__ = [
     "AdaptedContentCreate",
     "AdaptedContentRead",
     "AdaptedContentUpdate",
+    "AdaptationGenerateRequest",
     "AIRequestRead",
     "BoardColumnRead",
     "BoardStatusRead",
@@ -31,7 +40,12 @@ __all__ = [
     "BrandUpdate",
     "MediaFileRead",
     "MediaFileCreate",
+    "GeneratedAdaptationContent",
+    "GeneratedAdaptationRead",
+    "GeneratedPostContent",
+    "GeneratedPostRead",
     "PostCreate",
+    "PostGenerateRequest",
     "PostRead",
     "PostUpdate",
     "SocialNetworkRead",

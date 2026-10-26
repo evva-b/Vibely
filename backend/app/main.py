@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.api.ai import router as ai_router
 from app.api.auth import router as auth_router
 from app.api.adaptations import router as adaptations_router
 from app.api.board_statuses import router as board_statuses_router
@@ -22,3 +23,4 @@ app.include_router(social_networks_router)
 app.include_router(posts_router)
 app.include_router(adaptations_router)
 app.include_router(media_router)
+app.include_router(ai_router)
