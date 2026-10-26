@@ -4,9 +4,10 @@ from app.schemas.adapted_content import (
     AdaptedContentUpdate,
 )
 from app.schemas.ai_request import AIRequestRead
+from app.schemas.board import BoardColumnRead
 from app.schemas.board_status import BoardStatusRead
 from app.schemas.brand import BrandCreate, BrandRead, BrandUpdate
-from app.schemas.media_file import MediaFileRead
+from app.schemas.media_file import MediaFileCreate, MediaFileRead
 from app.schemas.post import PostCreate, PostRead, PostUpdate
 from app.schemas.social_network import SocialNetworkRead
 from app.schemas.template import TemplateCreate, TemplateRead, TemplateUpdate
@@ -23,11 +24,13 @@ __all__ = [
     "AdaptedContentRead",
     "AdaptedContentUpdate",
     "AIRequestRead",
+    "BoardColumnRead",
     "BoardStatusRead",
     "BrandCreate",
     "BrandRead",
     "BrandUpdate",
     "MediaFileRead",
+    "MediaFileCreate",
     "PostCreate",
     "PostRead",
     "PostUpdate",
