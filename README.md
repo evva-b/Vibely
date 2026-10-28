@@ -49,3 +49,17 @@ Open `http://localhost:3000`. Local CORS allows `localhost:3000` and
   the frontend does not persist file data locally.
 
 Run frontend checks with `npm run lint`, `npx tsc --noEmit`, and `npm run build`.
+
+## Backend API tests
+
+Install the backend test dependencies and run the integration tests from the
+`backend` directory:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m pytest -v
+```
+
+The tests call the FastAPI endpoints and use the configured PostgreSQL database
+and local Ollama model. Database changes made by tests are rolled back; the AI
+tests require Ollama and the configured model to be available.
