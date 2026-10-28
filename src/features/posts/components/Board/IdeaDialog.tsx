@@ -1,132 +1,75 @@
 "use client";
 
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
-import Image from "next/image";
-import { ImagePlus, Sparkles, X } from "lucide-react";
-import {
-  ideaStatuses,
-  statusLabels,
-  type Idea,
-  type IdeaStatus,
-} from "@/features/posts/types";
+import { useEffect, useState, type FormEvent } from "react";
+import { Sparkles, X } from "lucide-react";
+import type { BoardStatus, Post, PostCreate } from "@/types/api";
 import styles from "./Board.module.css";
 
-const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
-
 export type IdeaDialogProps = {
-  idea?: Idea;
-  initialStatus: IdeaStatus;
+  post?: Post;
+  statuses: BoardStatus[];
+  initialStatusId: string;
+  isSaving: boolean;
   onClose: () => void;
-  onSave: (idea: Omit<Idea, "id" | "updatedAt">, id?: string) => void;
+  onSave: (post: PostCreate, id?: string) => Promise<void>;
 };
 
+const quickStarts = [
+  "Знакомство с брендом",
+  "Полезный совет для аудитории",
+  "История клиента",
+  "Один день за кулисами",
+];
+
 export default function IdeaDialog({
-  idea,
-  initialStatus,
+  post,
+  statuses,
+  initialStatusId,
+  isSaving,
   onClose,
   onSave,
 }: IdeaDialogProps) {
-  const [title, setTitle] = useState(idea?.title ?? "");
-  const [description, setDescription] = useState(idea?.description ?? "");
-  const [status, setStatus] = useState(idea?.status ?? initialStatus);
-  const [topic, setTopic] = useState(idea?.topic ?? "");
-  const [image, setImage] = useState(idea?.image ?? "");
+  const [title, setTitle] = useState(post?.title ?? "");
+  const [text, setText] = useState(post?.text ?? "");
+  const [statusId, setStatusId] = useState(post?.board_status_id ?? initialStatusId);
   const [error, setError] = useState("");
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape" && !isSaving) onClose();
     }
-
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  }, [isSaving, onClose]);
 
-  function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setError("Выберите файл изображения.");
-      event.target.value = "";
-      return;
-    }
-
-    if (file.size > MAX_IMAGE_SIZE) {
-      setError("Размер изображения не должен превышать 2 МБ.");
-      event.target.value = "";
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setImage(reader.result);
-        setError("");
-      } else {
-        setError("Не удалось загрузить изображение.");
-      }
-    };
-    reader.onerror = () => {
-      setError("Не удалось загрузить изображение. Попробуйте другой файл.");
-    };
-    reader.readAsDataURL(file);
-  }
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const cleanTitle = title.trim();
-    if (!cleanTitle) {
-      setError("Добавьте название идеи.");
+    const cleanText = text.trim();
+    if (!cleanTitle || !cleanText || !statusId) {
+      setError("Укажите название, текст поста и его статус.");
       return;
     }
-
-    const submitter = (event.nativeEvent as SubmitEvent)
-      .submitter as HTMLButtonElement | null;
-    const savedStatus =
-      submitter?.value === "draft"
-        ? "draft"
-        : !idea && status === "draft"
-          ? "todo"
-          : status;
-
-    onSave(
-      {
-        title: cleanTitle,
-        description: description.trim(),
-        status: savedStatus,
-        topic,
-        ...(image ? { image } : {}),
-      },
-      idea?.id,
-    );
-  }
-
-  function addStructure() {
-    const cleanTitle = title.trim();
-    if (!cleanTitle) {
-      setError("Сначала укажите тему идеи.");
-      return;
-    }
-
-    setDescription(
-      `Цель: ${cleanTitle}\n\nОсновные тезисы:\n• \n• \n\nПризыв к действию:`,
-    );
     setError("");
+    try {
+      await onSave(
+        { title: cleanTitle, text: cleanText, board_status_id: statusId },
+        post?.id,
+      );
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Не удалось сохранить пост.",
+      );
+    }
   }
-
-  const templates = [
-    { label: "Знакомство с брендом", title: "Знакомство с брендом" },
-    { label: "Полезный совет", title: "Полезный совет для аудитории" },
-    { label: "История клиента", title: "История нашего клиента" },
-    { label: "Закулисье", title: "Один день за кулисами" },
-  ];
 
   return (
     <div
       className={styles.dialogBackdrop}
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget && !isSaving) onClose();
       }}
     >
       <section
@@ -139,155 +82,93 @@ export default function IdeaDialog({
           <div className={styles.dialogHeading}>
             <span className={styles.eyebrow}>ИДЕИ ДЛЯ КОНТЕНТА</span>
             <h2 className={styles.dialogTitle} id="idea-dialog-title">
-              {idea ? "Редактировать идею" : "Создать идею"}
+              {post ? "Редактировать пост" : "Создать пост"}
             </h2>
-            <p>Соберите мысли в основу будущей публикации.</p>
+            <p>Пост сохранится в вашем аккаунте.</p>
           </div>
           <div className={styles.dialogHeaderActions}>
             <label className={styles.dialogSelect}>
-              <span className={styles.visuallyHidden}>Статус идеи</span>
+              <span className={styles.visuallyHidden}>Статус поста</span>
               <select
-                onChange={(event) => setStatus(event.target.value as IdeaStatus)}
-                value={status}
+                disabled={isSaving}
+                onChange={(event) => setStatusId(event.target.value)}
+                value={statusId}
               >
-                {ideaStatuses.map((ideaStatus) => (
-                  <option key={ideaStatus} value={ideaStatus}>
-                    {statusLabels[ideaStatus]}
-                  </option>
+                {statuses.map((status) => (
+                  <option key={status.id} value={status.id}>{status.name}</option>
                 ))}
-              </select>
-            </label>
-            <label className={styles.dialogSelect}>
-              <span className={styles.visuallyHidden}>Тема идеи</span>
-              <select onChange={(event) => setTopic(event.target.value)} value={topic}>
-                <option value="">Без темы</option>
-                <option value="Продукт">Продукт</option>
-                <option value="Образование">Образование</option>
-                <option value="Личный бренд">Личный бренд</option>
-                <option value="Закулисье">Закулисье</option>
               </select>
             </label>
             <button
               aria-label="Закрыть окно"
               className={styles.iconButton}
+              disabled={isSaving}
               onClick={onClose}
               type="button"
-            >
-              <X aria-hidden="true" />
-            </button>
+            ><X aria-hidden="true" /></button>
           </div>
         </div>
 
         <form className={styles.dialogForm} onSubmit={handleSubmit}>
           <div className={styles.ideaPrompt}>
-            <label className={styles.visuallyHidden} htmlFor="idea-title">
-              Краткое название идеи
-            </label>
+            <label className={styles.visuallyHidden} htmlFor="idea-title">Название поста</label>
             <input
               autoFocus
+              disabled={isSaving}
               id="idea-title"
-              maxLength={90}
+              maxLength={255}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="О чём будет ваша идея?"
+              placeholder="О чём будет ваша публикация?"
               value={title}
             />
             <button
               className={styles.structureButton}
-              onClick={addStructure}
+              disabled={isSaving || !title.trim()}
+              onClick={() =>
+                setText(`Цель: ${title.trim()}\n\nОсновные тезисы:\n• \n• \n\nПризыв к действию:`)
+              }
               type="button"
-            >
-              <Sparkles aria-hidden="true" />
-              <span>Подсказать структуру</span>
-            </button>
+            ><Sparkles aria-hidden="true" /><span>Подсказать структуру</span></button>
           </div>
 
           <div className={styles.templateSection}>
             <span className={styles.sectionLabel}>Быстрый старт</span>
             <div className={styles.templateList}>
-              {templates.map((template) => (
+              {quickStarts.map((item) => (
                 <button
                   className={styles.templateChip}
-                  key={template.label}
-                  onClick={() => {
-                    setTitle(template.title);
-                    setError("");
-                  }}
+                  key={item}
+                  onClick={() => setTitle(item)}
                   type="button"
-                >
-                  {template.label}
-                </button>
+                >{item}</button>
               ))}
             </div>
           </div>
 
           <label className={styles.notesField}>
-            <span className={styles.sectionLabel}>Заметки и тезисы</span>
+            <span className={styles.sectionLabel}>Текст и заметки</span>
             <textarea
-              maxLength={500}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="Добавьте детали, основные мысли или черновик текста..."
-              rows={6}
-              value={description}
+              disabled={isSaving}
+              maxLength={10000}
+              onChange={(event) => setText(event.target.value)}
+              placeholder="Добавьте детали, основные мысли или текст публикации..."
+              rows={7}
+              value={text}
             />
-            <span className={styles.characterCount}>{description.length}/500</span>
+            <span className={styles.characterCount}>{text.length}/10000</span>
           </label>
 
-          <div className={styles.attachmentRow}>
-            {image ? (
-              <div className={styles.imagePreview}>
-                <Image
-                  alt="Предпросмотр изображения идеи"
-                  height={96}
-                  src={image}
-                  unoptimized
-                  width={128}
-                />
-                <button
-                  aria-label="Удалить изображение"
-                  className={styles.removeImageButton}
-                  onClick={() => setImage("")}
-                  type="button"
-                >
-                  <X aria-hidden="true" />
-                </button>
-              </div>
-            ) : (
-              <label className={styles.uploadButton}>
-                <ImagePlus aria-hidden="true" />
-                <span>Добавить изображение</span>
-                <input
-                  accept="image/*"
-                  className={styles.visuallyHidden}
-                  onChange={handleImageChange}
-                  type="file"
-                />
-              </label>
-            )}
-            <span className={styles.hint}>PNG, JPG или WEBP · до 2 МБ</span>
-          </div>
-
-          {error && (
-            <p className={styles.formError} role="alert">
-              {error}
-            </p>
-          )}
+          {error && <p className={styles.formError} role="alert">{error}</p>}
 
           <div className={styles.dialogActions}>
             <button
               className={styles.secondaryButton}
-              name="saveMode"
-              type="submit"
-              value="draft"
-            >
-              Сохранить в черновик
-            </button>
-            <button
-              className={styles.primaryButton}
-              name="saveMode"
-              type="submit"
-              value="publish"
-            >
-              {idea ? "Сохранить изменения" : "Создать публикацию"}
+              disabled={isSaving}
+              onClick={onClose}
+              type="button"
+            >Отмена</button>
+            <button className={styles.primaryButton} disabled={isSaving} type="submit">
+              {isSaving ? "Сохраняем…" : post ? "Сохранить изменения" : "Создать публикацию"}
             </button>
           </div>
         </form>

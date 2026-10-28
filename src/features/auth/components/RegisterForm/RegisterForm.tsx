@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Eye, EyeOff } from "lucide-react";
 import { ThemeToggle, useTheme } from "@/components/theme/ThemeProvider";
-import { saveMockUser } from "@/features/auth/lib/local-auth";
 import { isValidEmail } from "@/features/auth/lib/validation";
+import { api, ApiError, saveLoginToken } from "@/lib/api";
 import styles from "./RegisterForm.module.css";
 
 type PasswordRule = {
@@ -35,11 +35,14 @@ const passwordRules: PasswordRule[] = [
 
 export default function RegisterForm() {
   const router = useRouter();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverError, setServerError] = useState("");
   const { theme } = useTheme();
 
   const emailIsValid = isValidEmail(email);
@@ -48,16 +51,32 @@ export default function RegisterForm() {
   );
   const showEmailError = (emailTouched || submitted) && !emailIsValid;
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitted(true);
+    setServerError("");
 
-    if (!emailIsValid || !passwordIsValid) {
+    if (!name.trim() || !emailIsValid || !passwordIsValid) {
       return;
     }
 
-    saveMockUser(email);
-    router.push("/board");
+    setIsSubmitting(true);
+    try {
+      await api.register({ name: name.trim(), email: email.trim(), password });
+      const session = await api.login({ email: email.trim(), password });
+      saveLoginToken(session.access_token, true);
+      router.replace("/board");
+    } catch (error) {
+      setServerError(
+        error instanceof ApiError
+          ? error.status === 409
+            ? "Пользователь с таким адресом уже зарегистрирован. Войдите в аккаунт."
+            : error.message
+          : "Не удалось создать аккаунт. Попробуйте ещё раз.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -79,6 +98,24 @@ export default function RegisterForm() {
         </p>
 
         <form className={styles.form} noValidate onSubmit={handleSubmit}>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="register-name">
+              Ваше имя
+            </label>
+            <input
+              autoComplete="name"
+              className={`${styles.input} ${
+                submitted && !name.trim() ? styles.inputError : ""
+              }`}
+              id="register-name"
+              maxLength={100}
+              name="name"
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Как к вам обращаться?"
+              value={name}
+              aria-invalid={submitted && !name.trim()}
+            />
+          </div>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="register-email">
               Электронная почта
@@ -161,14 +198,16 @@ export default function RegisterForm() {
             </ul>
           </div>
 
-          {submitted && (!emailIsValid || !passwordIsValid) && (
+          {submitted && (!name.trim() || !emailIsValid || !passwordIsValid) && (
             <p className={styles.errorText} role="alert">
-              Проверьте электронную почту и требования к паролю.
+              Заполните имя, проверьте электронную почту и требования к паролю.
             </p>
           )}
 
-          <button className={styles.submitButton} type="submit">
-            Зарегистрироваться
+          {serverError && <p className={styles.errorText} role="alert">{serverError}</p>}
+
+          <button className={styles.submitButton} disabled={isSubmitting} type="submit">
+            {isSubmitting ? "Создаём аккаунт…" : "Зарегистрироваться"}
           </button>
 
         </form>

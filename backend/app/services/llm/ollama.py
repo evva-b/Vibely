@@ -1,9 +1,13 @@
+import logging
+import re
 from typing import Any
 
 import httpx
 
 from app.core.config import get_settings
 from app.services.llm.base import LLMResponseError, LLMUnavailableError
+
+logger = logging.getLogger(__name__)
 
 
 class OllamaProvider:
@@ -32,12 +36,37 @@ class OllamaProvider:
                 "Configured Ollama model name exceeds the database model field limit."
             )
 
+    @staticmethod
+    def _log_http_error(response: httpx.Response) -> None:
+        body = response.text[:500]
+        body = re.sub(
+            r"(?i)(authorization|api[_-]?key|token|password|secret)"
+            r"(\s*[:=]\s*|\s+)(?:bearer\s+)?[^\s,;\"']+",
+            r"\1=[REDACTED]",
+            body,
+        )
+        body = " ".join(body.split())
+        url = response.url.copy_with(
+            username="",
+            password="",
+            query=None,
+            fragment=None,
+        )
+        logger.warning(
+            "Ollama HTTP error: method=%s url=%s status=%s response=%s",
+            response.request.method,
+            url,
+            response.status_code,
+            body if response.request.method == "GET" else "[omitted]",
+        )
+
     def check_availability(self) -> None:
         self._require_model()
         try:
             response = httpx.get(
                 f"{self._base_url}/api/tags",
                 timeout=httpx.Timeout(10.0, connect=3.0),
+                trust_env=False,
             )
             response.raise_for_status()
             payload: Any = response.json()
@@ -46,7 +75,10 @@ class OllamaProvider:
         except httpx.ConnectError as exc:
             raise LLMUnavailableError("Ollama is not reachable at the configured URL.") from exc
         except httpx.HTTPStatusError as exc:
-            raise LLMUnavailableError("Ollama returned an HTTP error.") from exc
+            self._log_http_error(exc.response)
+            raise LLMUnavailableError(
+                f"Ollama health check failed with HTTP {exc.response.status_code}."
+            ) from exc
         except (httpx.HTTPError, ValueError) as exc:
             raise LLMUnavailableError("Ollama returned an invalid model list.") from exc
 
@@ -75,6 +107,7 @@ class OllamaProvider:
                     "format": "json",
                 },
                 timeout=self._timeout,
+                trust_env=False,
             )
             response.raise_for_status()
             payload: Any = response.json()

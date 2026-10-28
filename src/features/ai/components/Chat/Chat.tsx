@@ -1,450 +1,265 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type FormEvent,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Download,
   Check,
   Clipboard,
-  FileText,
-  Lightbulb,
   LogOut,
   Menu,
-  MoreHorizontal,
   MessageSquarePlus,
-  Paperclip,
   Plus,
   Search,
   Send,
   Sparkles,
-  ThumbsDown,
-  ThumbsUp,
   UserRound,
   X,
 } from "lucide-react";
-import Image from "next/image";
 import { ThemeToggle } from "@/components/theme/ThemeProvider";
-import { clearMockUser } from "@/features/auth/lib/local-auth";
-import {
-  getChatStateSnapshot,
-  getChatStorageError,
-  getServerChatStateSnapshot,
-  subscribeToChatState,
-  updateChatState,
-  createPlaceholderMessages,
-  type ChatAttachment,
-  type ChatMessage,
-  type Conversation,
-} from "@/features/ai/lib/chat-store";
-import IdeaDialog from "@/features/posts/components/Board/IdeaDialog";
-import {
-  getIdeasSnapshot,
-  getServerIdeasSnapshot,
-  subscribeToIdeas,
-  updateIdeas,
-} from "@/features/posts/lib/idea-store";
-import {
-  getCompanyProfileSnapshot,
-  getServerCompanyProfileSnapshot,
-  subscribeToCompanyProfile,
-} from "@/features/brands/lib/company-profile-store";
-import {
-  statusLabels,
-  type Idea,
-} from "@/features/posts/types";
+import { clearAccessToken } from "@/features/auth/lib/auth-token";
+import { api, ApiError } from "@/lib/api";
+import type {
+  AIRequest,
+  AdaptedContent,
+  Brand,
+  Post,
+  SocialNetwork,
+  Template,
+} from "@/types/api";
 import styles from "./Chat.module.css";
 
-const ideaStatusOrder = ["inProgress", "todo", "draft", "done"] as const;
-const emptyMessages: ChatMessage[] = [];
-const MAX_ATTACHMENT_SIZE = 2 * 1024 * 1024;
-const MAX_ATTACHMENTS = 3;
-const MAX_TOTAL_ATTACHMENT_SIZE = 5 * 1024 * 1024;
+type GeneratedContent = {
+  title?: string;
+  text?: string;
+};
 
-function createId() {
-  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
-}
-
-function getTimestamp() {
-  return Date.now();
-}
-
-function formatTime() {
-  return new Intl.DateTimeFormat("ru", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date());
-}
-
-function createDemoAnswer(prompt: string) {
-  const subject = prompt.replace(/\s+/g, " ").trim().replace(/[.!?]+$/, "");
-  return `Иногда самые хорошие идеи начинаются с простого «а что, если…» ✨\n\n${subject.charAt(0).toLocaleUpperCase()}${subject.slice(1)} — повод рассказать о том, что для нас действительно важно. Мы собрали детали, продумали каждую мелочь и готовы поделиться результатом с вами.\n\nЗагляните к нам, чтобы узнать больше. Будем рады вашему мнению — расскажите в комментариях, что думаете! 💬\n\n#идеядляконтента #историябренда #вдохновение`;
-}
-
-function getPostTitle(content: string) {
-  const firstLine = content.split("\n").find((line) => line.trim())?.trim() ?? "";
-  return firstLine.length > 64 ? `${firstLine.slice(0, 61)}...` : firstLine;
-}
-
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") resolve(reader.result);
-      else reject(new Error("Файл не удалось прочитать."));
+function parseResponse(response: string | null): GeneratedContent | null {
+  if (!response) return null;
+  try {
+    const parsed: unknown = JSON.parse(response);
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const value = parsed as Record<string, unknown>;
+    return {
+      title: typeof value.title === "string" ? value.title : undefined,
+      text: typeof value.text === "string" ? value.text : undefined,
     };
-    reader.onerror = () => reject(reader.error ?? new Error("Файл не удалось прочитать."));
-    reader.readAsDataURL(file);
-  });
+  } catch {
+    return { text: response };
+  }
 }
 
-function isSupportedAttachment(file: File) {
-  const extension = file.name.split(".").pop()?.toLocaleLowerCase();
-  return (
-    ["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"].includes(file.type) ||
-    extension === "pdf" ||
-    extension === "txt"
-  );
+function formatTime(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? ""
+    : new Intl.DateTimeFormat("ru", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(date);
 }
 
 export default function Chat() {
   const router = useRouter();
-  const chatState = useSyncExternalStore(
-    subscribeToChatState,
-    getChatStateSnapshot,
-    getServerChatStateSnapshot,
-  );
-  const ideas = useSyncExternalStore(
-    subscribeToIdeas,
-    getIdeasSnapshot,
-    getServerIdeasSnapshot,
-  );
-  const companyProfile = useSyncExternalStore(
-    subscribeToCompanyProfile,
-    getCompanyProfileSnapshot,
-    getServerCompanyProfileSnapshot,
-  );
-  const [query, setQuery] = useState("");
+  const [brand, setBrand] = useState<Brand | null>(null);
+  const [history, setHistory] = useState<AIRequest[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [networks, setNetworks] = useState<SocialNetwork[]>([]);
+  const [adaptations, setAdaptations] = useState<AdaptedContent[]>([]);
+  const [selectedRequestId, setSelectedRequestId] = useState("");
+  const [selectedPostId, setSelectedPostId] = useState("");
+  const [networkId, setNetworkId] = useState("");
+  const [templateId, setTemplateId] = useState("");
   const [draft, setDraft] = useState("");
-  const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [notice, setNotice] = useState("");
+  const [query, setQuery] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isReadingAttachments, setIsReadingAttachments] = useState(false);
-  const [isIdeaDialogOpen, setIsIdeaDialogOpen] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const hasMountedMessages = useRef(false);
-  const activeConversation = chatState.conversations.find(
-    (conversation) => conversation.id === chatState.activeConversationId,
-  );
-  const messages = activeConversation?.messages ?? emptyMessages;
-  const storageError = getChatStorageError();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isAdapting, setIsAdapting] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (!hasMountedMessages.current) {
-      hasMountedMessages.current = true;
-      return;
-    }
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages]);
-
-  useEffect(() => {
-    if (!isSidebarOpen) return;
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setIsSidebarOpen(false);
-    }
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [isSidebarOpen]);
-
-  const updateActiveConversation = useCallback(
-    (updateMessages: (current: ChatMessage[]) => ChatMessage[]) => {
-      updateChatState((state) => ({
-        ...state,
-        conversations: state.conversations.map((conversation) =>
-          conversation.id === state.activeConversationId
-            ? {
-                ...conversation,
-                messages: updateMessages(conversation.messages),
-                updatedAt: getTimestamp(),
-              }
-            : conversation,
-        ),
-      }));
-    },
-    [],
-  );
-
-  const filteredIdeas = ideas.filter((idea) =>
-    `${idea.title} ${idea.description}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
-  );
-  const groupedIdeas = ideaStatusOrder.map((status) => ({
-    status,
-    ideas: filteredIdeas.filter((idea) => idea.status === status),
-  }));
-  function sendPrompt(prompt: string, attachments = pendingAttachments) {
-    const cleanPrompt = prompt.trim();
-    if (!cleanPrompt && attachments.length === 0) return;
-
-    const now = formatTime();
-    const userMessage: ChatMessage = {
-      id: createId(),
-      role: "user",
-      content: cleanPrompt || "Посмотри, пожалуйста, прикреплённые файлы.",
-      createdAt: now,
-      attachments,
-    };
-    const assistantMessage: ChatMessage = {
-      id: createId(),
-      role: "assistant",
-      content: attachments.length > 0 && !cleanPrompt
-        ? "Файлы прикреплены к сообщению. В демо-режиме я не анализирую вложения — подключение AI появится позже."
-        : createDemoAnswer(cleanPrompt),
-      createdAt: now,
-    };
-    const state = getChatStateSnapshot();
-    updateChatState((current) => ({
-      ...current,
-      conversations: current.conversations.map((conversation) =>
-        conversation.id === state.activeConversationId
-          ? {
-              ...conversation,
-              title:
-                conversation.title === "Новая беседа"
-                  ? getPostTitle(cleanPrompt || attachments[0].name) || "Новая беседа"
-                  : conversation.title,
-              messages: [...conversation.messages, userMessage, assistantMessage],
-              updatedAt: getTimestamp(),
-            }
-          : conversation,
+  const selectedRequest = history.find((item) => item.id === selectedRequestId) ?? null;
+  const selectedContent = parseResponse(selectedRequest?.response ?? null);
+  const filteredHistory = useMemo(
+    () =>
+      history.filter((item) =>
+        `${item.prompt} ${item.request_type} ${item.model}`
+          .toLocaleLowerCase()
+          .includes(query.toLocaleLowerCase()),
       ),
-    }));
-    setDraft("");
-    setPendingAttachments([]);
-    setNotice(
-      attachments.length > 0
-        ? "Вложения добавлены к сообщению. Демо-ответ создан без анализа файлов и без подключения к AI."
-        : "Демо-режим: ответ сформирован локально, без подключения к AI.",
-    );
-  }
+    [history, query],
+  );
+  const selectedPost = posts.find((post) => post.id === selectedPostId) ?? null;
+  const selectedAdaptations = adaptations.filter(
+    (adaptation) => adaptation.post_id === selectedPostId,
+  );
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    sendPrompt(draft);
-  }
-
-  function startNewChat() {
-    const conversation: Conversation = {
-      id: createId(),
-      title: "Новая беседа",
-      messages: createPlaceholderMessages(),
-      updatedAt: getTimestamp(),
-    };
-    updateChatState((state) => ({
-      conversations: [conversation, ...state.conversations],
-      activeConversationId: conversation.id,
-    }));
-    setDraft("");
-    setPendingAttachments([]);
-    setNotice("");
-    setIsSidebarOpen(false);
-  }
-
-  function selectIdea(idea: Idea) {
-    const existing = chatState.conversations.find(
-      (conversation) => conversation.ideaId === idea.id,
-    );
-    if (existing) {
-      updateChatState((state) => ({
-        ...state,
-        activeConversationId: existing.id,
-        conversations: state.conversations.map((conversation) =>
-          conversation.id === existing.id && conversation.messages.length === 0
-            ? { ...conversation, messages: createPlaceholderMessages() }
-            : conversation,
-        ),
-      }));
-      setPendingAttachments([]);
-      setNotice("");
-      setIsSidebarOpen(false);
-    } else {
-      const conversation: Conversation = {
-        id: createId(),
-        title: idea.title,
-        messages: createPlaceholderMessages(),
-        updatedAt: getTimestamp(),
-        ideaId: idea.id,
-      };
-      updateChatState((state) => ({
-        conversations: [conversation, ...state.conversations],
-        activeConversationId: conversation.id,
-      }));
-      setPendingAttachments([]);
-      setNotice("");
-      setIsSidebarOpen(false);
-    }
-    setDraft("");
-  }
-
-  function saveIdeaFromChat(
-    idea: Omit<Idea, "id" | "updatedAt">,
-  ) {
-    const savedIdea: Idea = {
-      ...idea,
-      id: createId(),
-      updatedAt: getTimestamp(),
-    };
-    const conversation: Conversation = {
-      id: createId(),
-      title: savedIdea.title,
-      messages: createPlaceholderMessages(),
-      updatedAt: getTimestamp(),
-      ideaId: savedIdea.id,
-    };
-
-    updateIdeas((current) => [savedIdea, ...current]);
-    updateChatState((state) => ({
-      conversations: [conversation, ...state.conversations],
-      activeConversationId: conversation.id,
-    }));
-    setDraft("");
-    setPendingAttachments([]);
-    setNotice("Идея создана. Открыт диалог для работы с ней.");
-    setIsIdeaDialogOpen(false);
-    setIsSidebarOpen(false);
-  }
-
-  async function copyPost(message: ChatMessage) {
+  const loadData = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(message.content);
-      setCopiedId(message.id);
-      window.setTimeout(() => setCopiedId(null), 1800);
-    } catch (error) {
-      console.error("Не удалось скопировать текст публикации.", error);
-      setNotice("Не удалось скопировать текст. Проверьте разрешение браузера.");
-    }
-  }
-
-  function toggleReaction(id: string, reaction: "up" | "down") {
-    updateActiveConversation((current) =>
-      current.map((message) =>
-        message.id === id
-          ? { ...message, reaction: message.reaction === reaction ? undefined : reaction }
-          : message,
-      ),
-    );
-  }
-
-  function saveAsIdea(message: ChatMessage) {
-    const title = getPostTitle(message.content);
-    updateIdeas((current) => [
-      {
-        id: createId(),
-        title: title || "Новая идея из чата",
-        description: message.content,
-        status: "draft",
-        updatedAt: getTimestamp(),
-      },
-      ...current,
-    ]);
-    updateActiveConversation((current) =>
-      current.map((item) =>
-        item.id === message.id ? { ...item, saved: true } : item,
-      ),
-    );
-    setNotice("Текст добавлен на доску в колонку «Черновик».");
-  }
-
-  async function handleFilesSelected(files: FileList | null) {
-    if (!files?.length) return;
-    const selectedFiles = Array.from(files);
-    const currentSize = pendingAttachments.reduce((total, item) => total + item.size, 0);
-    const acceptedFiles: File[] = [];
-    const validationMessages: string[] = [];
-
-    for (const file of selectedFiles) {
-      if (!isSupportedAttachment(file)) {
-        validationMessages.push(`Формат файла «${file.name}» не поддерживается. Добавьте фото, PDF или TXT.`);
-        continue;
+      const brands = await api.listBrands();
+      const activeBrand = brands[0] ?? null;
+      setBrand(activeBrand);
+      if (!activeBrand) {
+        setHistory([]);
+        setPosts([]);
+        setTemplates([]);
+        setNetworks([]);
+        return;
       }
-      if (file.size > MAX_ATTACHMENT_SIZE) {
-        validationMessages.push(`Файл «${file.name}» больше 2 МБ и не может быть прикреплён.`);
-        continue;
-      }
-      if (pendingAttachments.length + acceptedFiles.length >= MAX_ATTACHMENTS) {
-        validationMessages.push("К одному сообщению можно прикрепить не более 3 файлов.");
-        break;
-      }
-      const acceptedSize = acceptedFiles.reduce((total, item) => total + item.size, 0);
-      if (currentSize + acceptedSize + file.size > MAX_TOTAL_ATTACHMENT_SIZE) {
-        validationMessages.push("Общий размер вложений не должен превышать 5 МБ.");
-        break;
-      }
-      acceptedFiles.push(file);
-    }
-
-    if (acceptedFiles.length === 0) {
-      setNotice(validationMessages.join(" "));
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
-    }
-
-    setIsReadingAttachments(true);
-    try {
-      const attachments = await Promise.all(
-        acceptedFiles.map(async (file) => ({
-          id: createId(),
-          name: file.name,
-          type: file.type || "application/octet-stream",
-          dataUrl: await readFileAsDataUrl(file),
-          size: file.size,
-        })),
+      const [requests, board, templateList, socialNetworks] = await Promise.all([
+        api.listAIRequests(activeBrand.id),
+        api.getBoard(activeBrand.id),
+        api.listTemplates(activeBrand.id),
+        api.listSocialNetworks(),
+      ]);
+      const allPosts = board.flatMap((column) => column.posts);
+      setHistory(requests);
+      setPosts(allPosts);
+      setTemplates(templateList);
+      setNetworks(socialNetworks);
+      setNetworkId((current) => current || socialNetworks[0]?.id || "");
+      setSelectedPostId((current) =>
+        allPosts.some((post) => post.id === current) ? current : allPosts[0]?.id ?? "",
       );
-      setPendingAttachments((current) => [...current, ...attachments]);
-      setNotice(validationMessages.join(" "));
-    } catch (error) {
-      console.error("Не удалось прочитать прикреплённый файл.", error);
-      setNotice("Не удалось прочитать один из файлов. Попробуйте выбрать его ещё раз.");
+      setSelectedRequestId((current) =>
+        requests.some((request) => request.id === current)
+          ? current
+          : requests[0]?.id ?? "",
+      );
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Не удалось загрузить историю генераций.",
+      );
     } finally {
-      setIsReadingAttachments(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    queueMicrotask(() => {
+      if (active) void loadData();
+    });
+    return () => {
+      active = false;
+    };
+  }, [loadData]);
+
+  useEffect(() => {
+    let active = true;
+    if (!selectedPostId) return;
+    api.listAdaptations(selectedPostId)
+      .then((items) => {
+        if (active) setAdaptations(items);
+      })
+      .catch((requestError: unknown) => {
+        if (active) {
+          setError(
+            requestError instanceof Error
+              ? requestError.message
+              : "Не удалось загрузить адаптации.",
+          );
+        }
+      })
+      .finally(() => {
+        active = false;
+      });
+    return () => {
+      active = false;
+    };
+  }, [selectedPostId]);
+
+  async function generatePost(prompt = draft) {
+    const cleanPrompt = prompt.trim();
+    if (!brand || !cleanPrompt || isGenerating) return;
+    setIsGenerating(true);
+    setError("");
+    setNotice("");
+    try {
+      const generated = await api.generatePost(brand.id, {
+        prompt: cleanPrompt,
+        ...(templateId ? { template_id: templateId } : {}),
+      });
+      setDraft("");
+      await loadData();
+      setSelectedPostId(generated.post.id);
+      setSelectedRequestId(generated.ai_request_id);
+      setNotice("Пост сгенерирован и сохранён на доске.");
+    } catch (requestError) {
+      setError(
+        requestError instanceof ApiError && requestError.status >= 500
+          ? "Не удалось выполнить генерацию. Проверьте, что локальная языковая модель запущена."
+          : requestError instanceof Error
+            ? requestError.message
+            : "Не удалось выполнить генерацию.",
+      );
+    } finally {
+      setIsGenerating(false);
     }
   }
 
-  function handleSignOut() {
-    clearMockUser();
-    router.push("/login");
+  async function generateAdaptation() {
+    if (!selectedPost || !networkId || isAdapting) return;
+    setIsAdapting(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await api.generateAdaptation(selectedPost.id, networkId);
+      setAdaptations((current) => [result.adaptation, ...current]);
+      setNotice("Адаптация создана и сохранена.");
+    } catch (requestError) {
+      setError(
+        requestError instanceof ApiError && requestError.status >= 500
+          ? "Не удалось создать адаптацию. Проверьте доступность локальной языковой модели."
+          : requestError instanceof Error
+            ? requestError.message
+            : "Не удалось создать адаптацию.",
+      );
+    } finally {
+      setIsAdapting(false);
+    }
+  }
+
+  async function copyText(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setError("Не удалось скопировать текст. Проверьте разрешение браузера.");
+    }
+  }
+
+  function signOut() {
+    clearAccessToken();
+    router.replace("/login");
   }
 
   return (
     <main className={styles.app}>
       {isSidebarOpen && (
         <button
-          aria-label="Закрыть меню чатов"
+          aria-label="Закрыть историю генераций"
           className={styles.drawerBackdrop}
           onClick={() => setIsSidebarOpen(false)}
           type="button"
         />
       )}
       <aside
-        aria-label="Идеи по статусам"
+        aria-label="История AI-запросов"
         className={`${styles.sidebar} ${isSidebarOpen ? styles.sidebarOpen : ""}`}
       >
         <div className={styles.sidebarHeading}>
           <Link aria-label="Vibely — главная" className={styles.brand} href="/board">
-            <span aria-hidden="true" className={styles.brandMark}>V</span>
-            <span>Vibely</span>
+            <span aria-hidden="true" className={styles.brandMark}>V</span><span>Vibely</span>
           </Link>
           <button
-            aria-label="Закрыть меню чатов"
+            aria-label="Закрыть историю"
             className={styles.drawerClose}
             onClick={() => setIsSidebarOpen(false)}
             type="button"
@@ -452,18 +267,21 @@ export default function Chat() {
         </div>
         <button
           className={styles.newChatButton}
-          onClick={() => setIsIdeaDialogOpen(true)}
+          disabled={!brand}
+          onClick={() => {
+            setSelectedRequestId("");
+            setDraft("");
+            setNotice("");
+            setIsSidebarOpen(false);
+          }}
           type="button"
-        >
-          <Plus aria-hidden="true" />
-          Новая идея
-        </button>
+        ><Plus aria-hidden="true" />Новая генерация</button>
         <label className={styles.searchField}>
           <Search aria-hidden="true" />
-          <span className={styles.visuallyHidden}>Поиск по публикациям</span>
+          <span className={styles.visuallyHidden}>Поиск по истории AI</span>
           <input
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Поиск по публикациям..."
+            placeholder="Поиск по истории..."
             value={query}
           />
           {query && (
@@ -472,73 +290,88 @@ export default function Chat() {
             </button>
           )}
         </label>
-
         <div className={styles.ideaList}>
-          {groupedIdeas.map(({ status, ideas: statusIdeas }) => (
-            <section className={styles.ideaGroup} key={status}>
-              <h2 className={styles.groupHeading}>
-                <span className={`${styles.statusDot} ${styles[`status-${status}`]}`} />
-                {statusLabels[status].toLocaleUpperCase()}
-              </h2>
-              {statusIdeas.map((idea) => (
+          <section className={styles.ideaGroup}>
+            <h2 className={styles.groupHeading}>ПОСЛЕДНИЕ ЗАПРОСЫ</h2>
+            {filteredHistory.map((item) => {
+              const content = parseResponse(item.response);
+              return (
                 <button
-                  aria-pressed={activeConversation?.ideaId === idea.id}
-                  className={`${styles.ideaPreview} ${activeConversation?.ideaId === idea.id ? styles.ideaPreviewActive : ""}`}
-                  key={idea.id}
-                  onClick={() => selectIdea(idea)}
+                  aria-pressed={selectedRequestId === item.id}
+                  className={`${styles.ideaPreview} ${selectedRequestId === item.id ? styles.ideaPreviewActive : ""}`}
+                  key={item.id}
+                  onClick={() => {
+                    setSelectedRequestId(item.id);
+                    setIsSidebarOpen(false);
+                  }}
                   type="button"
                 >
-                  <strong>{idea.title}</strong>
-                  <span>{idea.description || "Без описания"}</span>
+                  <strong>{content?.title || item.prompt}</strong>
+                  <span>{item.request_type === "adaptation" ? "Адаптация" : "Генерация поста"} · {formatTime(item.created_at)}</span>
                 </button>
-              ))}
-              {statusIdeas.length === 0 && query && (
-                <p className={styles.noResults}>Ничего не найдено</p>
-              )}
-            </section>
-          ))}
+              );
+            })}
+            {!isLoading && filteredHistory.length === 0 && (
+              <p className={styles.noResults}>
+                {query ? "Ничего не найдено" : "История пока пуста"}
+              </p>
+            )}
+          </section>
         </div>
       </aside>
 
-      <section aria-label="Чат с Vibely AI" className={styles.chatPanel}>
+      <section aria-label="Генерация контента Vibely AI" className={styles.chatPanel}>
         <header className={styles.topbar}>
           <nav aria-label="Основная навигация" className={styles.navigation}>
             <button
-              aria-label="Открыть список чатов"
+              aria-label="Открыть историю генераций"
               aria-expanded={isSidebarOpen}
               className={styles.mobileMenuButton}
               onClick={() => setIsSidebarOpen(true)}
               type="button"
             ><Menu aria-hidden="true" /></button>
             <Link className={styles.navLink} href="/board">Доска идей</Link>
-            <Link aria-current="page" className={styles.navActive} href="/chats">Чаты</Link>
+            <Link aria-current="page" className={styles.navActive} href="/chats">История AI</Link>
           </nav>
           <div className={styles.topbarActions}>
             <ThemeToggle inline />
-            <Link aria-label={`Профиль компании: ${companyProfile.brandName || "Профиль компании"}`} className={styles.organizationBadge} href="/profile">
+            <Link
+              aria-label={`Профиль компании: ${brand?.name ?? "Профиль компании"}`}
+              className={styles.organizationBadge}
+              href="/profile"
+            >
               <span className={styles.organizationIcon}><UserRound aria-hidden="true" /></span>
-              <span>{companyProfile.brandName || "Профиль компании"}</span>
+              <span>{brand?.name ?? "Профиль компании"}</span>
             </Link>
             <details className={styles.accountMenu}>
-              <summary aria-label="Дополнительные действия профиля"><MoreHorizontal aria-hidden="true" /></summary>
+              <summary aria-label="Дополнительные действия профиля"><UserRound aria-hidden="true" /></summary>
               <div className={styles.accountDropdown}>
-                <button onClick={handleSignOut} type="button"><LogOut aria-hidden="true" />Выйти</button>
+                <button onClick={signOut} type="button"><LogOut aria-hidden="true" />Выйти</button>
               </div>
             </details>
           </div>
         </header>
 
         <div aria-live="polite" className={styles.conversation}>
-          {messages.length === 0 ? (
+          {isLoading ? (
+            <div className={styles.emptyConversation}><p>Загружаем данные из backend…</p></div>
+          ) : !brand ? (
             <div className={styles.emptyConversation}>
               <span className={styles.emptyIcon}><Sparkles aria-hidden="true" /></span>
-              <h1>О чём поговорим?</h1>
-              <p>Опишите задачу или выберите идею слева — подготовим основу публикации.</p>
+              <h1>Сначала настройте бренд</h1>
+              <p>Профиль бренда нужен для генерации публикаций.</p>
+              <Link className={styles.primaryButton} href="/profile">Настроить профиль</Link>
+            </div>
+          ) : !selectedRequestId && !draft ? (
+            <div className={styles.emptyConversation}>
+              <span className={styles.emptyIcon}><Sparkles aria-hidden="true" /></span>
+              <h1>Создайте публикацию с AI</h1>
+              <p>Опишите задачу. Генерация учитывает бренд, его аудиторию, tone of voice и выбранный шаблон.</p>
               <div className={styles.suggestionList}>
                 {[
-                  "Придумай пост-знакомство с брендом",
-                  "Напиши вовлекающий пост с вопросом",
+                  "Напиши пост-знакомство с брендом",
                   "Предложи идеи для сторис на неделю",
+                  "Создай вовлекающий пост с вопросом аудитории",
                 ].map((suggestion) => (
                   <button key={suggestion} onClick={() => setDraft(suggestion)} type="button">
                     <Sparkles aria-hidden="true" />{suggestion}
@@ -548,219 +381,138 @@ export default function Chat() {
             </div>
           ) : (
             <div className={styles.messageList}>
-              {messages.map((message) =>
-                message.role === "user" ? (
-                  <article className={styles.userMessage} key={message.id}>
-                    <span className={styles.messageTime}>Вы, {message.createdAt}</span>
-                    {message.content && <p>{message.content}</p>}
-                    {!!message.attachments?.length && (
-                      <div className={styles.messageAttachments}>
-                        {message.attachments.map((attachment) => (
-                          <a
-                            className={styles.messageAttachment}
-                            download={attachment.name}
-                            href={attachment.dataUrl}
-                            key={attachment.id}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            {attachment.type.startsWith("image/") ? (
-                              <Image
-                                alt={attachment.name}
-                                height={130}
-                                src={attachment.dataUrl}
-                                unoptimized
-                                width={170}
-                              />
-                            ) : (
-                              <span className={styles.fileAttachment}>
-                                <FileText aria-hidden="true" />
-                                <span>{attachment.name}</span>
-                                <Download aria-hidden="true" />
-                              </span>
-                            )}
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                  </article>
-                ) : (
-                  <article className={styles.assistantMessage} key={message.id}>
-                    <div className={styles.assistantAvatar} aria-hidden="true">V</div>
-                    <div className={styles.assistantContent}>
-                      <header className={styles.assistantHeader}>
-                        <span>Vibely AI <span className={styles.demoBadge}>ДЕМО</span></span>
-                        <div className={styles.messageActions}>
-                          <button
-                            aria-label="Полезный ответ"
-                            aria-pressed={message.reaction === "up"}
-                            className={message.reaction === "up" ? styles.actionActive : ""}
-                            onClick={() => toggleReaction(message.id, "up")}
-                            type="button"
-                          ><ThumbsUp aria-hidden="true" /></button>
-                          <button
-                            aria-label="Ответ не помог"
-                            aria-pressed={message.reaction === "down"}
-                            className={message.reaction === "down" ? styles.actionActive : ""}
-                            onClick={() => toggleReaction(message.id, "down")}
-                            type="button"
-                          ><ThumbsDown aria-hidden="true" /></button>
-                          <button
-                            aria-label={copiedId === message.id ? "Текст скопирован" : "Скопировать текст"}
-                            onClick={() => void copyPost(message)}
-                            type="button"
-                          >{copiedId === message.id ? <Check aria-hidden="true" /> : <Clipboard aria-hidden="true" />}</button>
-                        </div>
-                      </header>
-                      <div className={styles.generatedPost}>
-                        <h2>ГОТОВЫЙ ЧЕРНОВИК ПОСТА</h2>
-                        {message.content.split("\n").map((paragraph, index) =>
-                          paragraph.startsWith("#") ? (
-                            <p className={styles.hashtags} key={`${message.id}-${index}`}>{paragraph}</p>
-                          ) : paragraph ? (
-                            <p key={`${message.id}-${index}`}>{paragraph}</p>
-                          ) : (
-                            <div aria-hidden="true" className={styles.paragraphSpace} key={`${message.id}-${index}`} />
-                          ),
-                        )}
-                      </div>
-                      <section className={styles.explanation}>
-                        <h3>Почему этот вариант сработает</h3>
-                        <ul>
-                          <li><Check aria-hidden="true" />Эмоциональный заход: текст начинается с образа и создаёт настроение.</li>
-                          <li><Check aria-hidden="true" />Чёткая ценность: читателю понятно, о чём публикация и зачем читать дальше.</li>
-                          <li><Check aria-hidden="true" />Естественный призыв к действию помогает начать разговор с аудиторией.</li>
-                          <li><Check aria-hidden="true" />Формат легко адаптировать для поста, сторис или короткого видео.</li>
-                        </ul>
-                      </section>
-                      <div className={styles.assistantFooter}>
-                        <button
-                          className={styles.saveIdeaButton}
-                          disabled={message.saved}
-                          onClick={() => saveAsIdea(message)}
-                          type="button"
-                        >
-                          {message.saved ? <Check aria-hidden="true" /> : <Plus aria-hidden="true" />}
-                          {message.saved ? "Добавлено на доску" : "Сохранить как идею"}
-                        </button>
-                        <span>{message.createdAt}</span>
-                      </div>
-                    </div>
-                  </article>
-                ),
+              {selectedRequest && (
+                <article className={styles.userMessage}>
+                  <span className={styles.messageTime}>Задание · {formatTime(selectedRequest.created_at)}</span>
+                  <p>{selectedRequest.prompt}</p>
+                </article>
               )}
-              <div ref={messagesEndRef} />
+              {selectedRequest && selectedContent && (
+                <article className={styles.assistantMessage}>
+                  <div className={styles.assistantAvatar} aria-hidden="true">V</div>
+                  <div className={styles.assistantContent}>
+                    <header className={styles.assistantHeader}>
+                      <span>Vibely AI <span className={styles.demoBadge}>{selectedRequest.model}</span></span>
+                      <div className={styles.messageActions}>
+                        <button
+                          aria-label={copied ? "Текст скопирован" : "Скопировать текст"}
+                          onClick={() => void copyText([selectedContent.title, selectedContent.text].filter(Boolean).join("\n\n"))}
+                          type="button"
+                        >{copied ? <Check aria-hidden="true" /> : <Clipboard aria-hidden="true" />}</button>
+                      </div>
+                    </header>
+                    <div className={styles.generatedPost}>
+                      <h2>{selectedContent.title ?? "РЕЗУЛЬТАТ ЗАПРОСА"}</h2>
+                      {selectedContent.text?.split("\n").map((paragraph, index) =>
+                        paragraph ? <p key={`${selectedRequest.id}-${index}`}>{paragraph}</p> : <br key={`${selectedRequest.id}-${index}`} />,
+                      )}
+                    </div>
+                    <div className={styles.assistantFooter}>
+                      <span>{selectedRequest.request_type === "adaptation" ? "Адаптация" : "Пост сохранён на доске"}</span>
+                      <span>{formatTime(selectedRequest.created_at)}</span>
+                    </div>
+                  </div>
+                </article>
+              )}
+              {!selectedRequest && (
+                <div className={styles.emptyConversation}>
+                  <span className={styles.emptyIcon}><MessageSquarePlus aria-hidden="true" /></span>
+                  <h1>Опишите публикацию</h1>
+                  <p>Текст будет сгенерирован и сохранён в PostgreSQL.</p>
+                </div>
+              )}
+              {posts.length > 0 && (
+                <section className={styles.explanation}>
+                  <h3>Адаптировать публикацию</h3>
+                  <label>
+                    <span className={styles.visuallyHidden}>Выберите исходный пост</span>
+                    <select onChange={(event) => setSelectedPostId(event.target.value)} value={selectedPostId}>
+                      {posts.map((post) => <option key={post.id} value={post.id}>{post.title}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    <span className={styles.visuallyHidden}>Социальная сеть</span>
+                    <select onChange={(event) => setNetworkId(event.target.value)} value={networkId}>
+                      {networks.map((network) => <option key={network.id} value={network.id}>{network.name}</option>)}
+                    </select>
+                  </label>
+                  <button disabled={!selectedPost || !networkId || isAdapting} onClick={() => void generateAdaptation()} type="button">
+                    {isAdapting ? "Адаптируем…" : "Создать адаптацию"}
+                  </button>
+                  {selectedAdaptations.map((adaptation) => (
+                    <div className={styles.generatedPost} key={adaptation.id}>
+                      <h2>СОХРАНЁННАЯ АДАПТАЦИЯ</h2>
+                      <p>{adaptation.text}</p>
+                    </div>
+                  ))}
+                </section>
+              )}
+              <div />
             </div>
           )}
         </div>
 
+        {error && <p className={styles.storageError} role="alert">{error}</p>}
         {notice && (
           <p className={styles.notice} role="status">
             {notice}
-            <button aria-label="Закрыть уведомление" onClick={() => setNotice("")} type="button">
-              <X aria-hidden="true" />
-            </button>
+            <button aria-label="Закрыть уведомление" onClick={() => setNotice("")} type="button"><X aria-hidden="true" /></button>
           </p>
         )}
-        {storageError && (
-          <p className={styles.storageError} role="alert">{storageError}</p>
-        )}
 
-        {messages.length > 0 && (
-          <div className={styles.quickPrompts}>
-            {["Сделай текст короче", "Добавь больше эмоций", "Предложи заголовки"].map((suggestion) => (
-              <button key={suggestion} onClick={() => setDraft(suggestion)} type="button">
-                <Lightbulb aria-hidden="true" />{suggestion}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className={styles.quickPrompts}>
+          {templates.length > 0 && (
+            <label>
+              <span className={styles.visuallyHidden}>Шаблон генерации</span>
+              <select onChange={(event) => setTemplateId(event.target.value)} value={templateId}>
+                <option value="">Без шаблона</option>
+                {templates.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}
+              </select>
+            </label>
+          )}
+        </div>
 
-        <form className={styles.composer} onSubmit={handleSubmit}>
+        <form
+          className={styles.composer}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void generatePost();
+          }}
+        >
           <button
-            aria-label="Новая беседа"
+            aria-label="Новая генерация"
             className={styles.composerNewChat}
-            onClick={startNewChat}
-            type="button"
-          >
-            <MessageSquarePlus aria-hidden="true" />
-          </button>
-          <label className={styles.visuallyHidden} htmlFor="chat-prompt">Сообщение для Vibely AI</label>
-          <input
-            accept="image/*,.pdf,.txt"
-            className={styles.visuallyHidden}
-            multiple
-            onChange={(event) => void handleFilesSelected(event.target.files)}
-            ref={fileInputRef}
-            type="file"
-          />
-          <div className={styles.composerContents}>
-            {!!pendingAttachments.length && (
-              <div className={styles.pendingAttachments}>
-                {pendingAttachments.map((attachment) => (
-                  <div className={styles.pendingAttachment} key={attachment.id}>
-                    {attachment.type.startsWith("image/") ? (
-                      <Image
-                        alt={attachment.name}
-                        height={44}
-                        src={attachment.dataUrl}
-                        unoptimized
-                        width={44}
-                      />
-                    ) : (
-                      <FileText aria-hidden="true" />
-                    )}
-                    <span>{attachment.name}</span>
-                    <button
-                      aria-label={`Удалить файл ${attachment.name}`}
-                      onClick={() => setPendingAttachments((current) => current.filter((item) => item.id !== attachment.id))}
-                      type="button"
-                    ><X aria-hidden="true" /></button>
-                  </div>
-                ))}
-              </div>
-            )}
-          <textarea
-            id="chat-prompt"
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                sendPrompt(draft);
-              }
+            onClick={() => {
+              setSelectedRequestId("");
+              setDraft("");
             }}
-            placeholder="Спросите Vibely AI, уточните задачу или предложите правки к посту..."
-            rows={1}
-            value={draft}
-          />
+            type="button"
+          ><MessageSquarePlus aria-hidden="true" /></button>
+          <div className={styles.composerContents}>
+            <label className={styles.visuallyHidden} htmlFor="chat-prompt">Задание для Vibely AI</label>
+            <textarea
+              disabled={isGenerating || !brand}
+              id="chat-prompt"
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  void generatePost();
+                }
+              }}
+              placeholder="Опишите идею публикации для Vibely AI..."
+              rows={1}
+              value={draft}
+            />
           </div>
           <button
-            aria-label="Прикрепить изображения, PDF или TXT"
-            className={styles.attachButton}
-            disabled={isReadingAttachments || pendingAttachments.length >= MAX_ATTACHMENTS}
-            onClick={() => fileInputRef.current?.click()}
-            type="button"
-          >
-            <Paperclip aria-hidden="true" />
-          </button>
-          <button
-            aria-label="Отправить сообщение"
+            aria-label={isGenerating ? "Выполняется генерация" : "Сгенерировать пост"}
             className={styles.sendButton}
-            disabled={!draft.trim() && pendingAttachments.length === 0}
+            disabled={isGenerating || !brand || !draft.trim()}
             type="submit"
-          >
-            <Send aria-hidden="true" />
-          </button>
-          <span className={styles.composerHint}>Enter — отправить · Shift + Enter — новая строка · до 3 файлов по 2 МБ</span>
+          >{isGenerating ? <span className={styles.loadingSpinner} aria-hidden="true" /> : <Send aria-hidden="true" />}</button>
         </form>
       </section>
-      {isIdeaDialogOpen && (
-        <IdeaDialog
-          initialStatus="inProgress"
-          onClose={() => setIsIdeaDialogOpen(false)}
-          onSave={(idea) => saveIdeaFromChat(idea)}
-        />
-      )}
     </main>
   );
 }

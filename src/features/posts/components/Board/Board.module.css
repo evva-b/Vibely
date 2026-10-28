@@ -286,7 +286,7 @@
 .board {
   display: grid;
   min-height: min(65vh, 680px);
-  grid-template-columns: repeat(4, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   align-items: stretch;
   gap: 18px;
   overflow-x: auto;

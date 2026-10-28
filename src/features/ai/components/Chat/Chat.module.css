@@ -30,6 +30,22 @@
   overflow: hidden;
 }
 
+.loadingSpinner {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgb(255 255 255 / 45%);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 :global(html[data-theme="dark"]) .app {
   --chat-canvas: var(--app-background, #151210);
   --chat-surface: #29231f;
@@ -1130,6 +1146,10 @@
 
   .explanation li {
     font-size: 14px;
+  }
+
+  .loadingSpinner {
+    animation-duration: 1400ms;
   }
 }
 

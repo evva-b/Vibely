@@ -517,6 +517,91 @@
   border-color: var(--profile-accent);
 }
 
+.templateCard {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--profile-border);
+  border-radius: 10px;
+  background: var(--profile-surface);
+}
+
+.templateCard label {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  color: var(--profile-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.templateCard input,
+.templateCard textarea {
+  width: 100%;
+  min-height: 39px;
+  padding: 9px 11px;
+  border: 1px solid var(--profile-border);
+  border-radius: 7px;
+  outline: none;
+  background: var(--profile-surface);
+  color: var(--profile-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.templateCard textarea {
+  min-height: 82px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.templateCard input:focus,
+.templateCard textarea:focus {
+  border-color: var(--profile-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--profile-accent) 15%, transparent);
+}
+
+.templateCard input:disabled,
+.templateCard textarea:disabled {
+  opacity: 0.65;
+}
+
+.templatePrompt,
+.templateActions {
+  grid-column: 1 / -1;
+}
+
+.templateActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+}
+
+.removeTemplateButton {
+  min-height: 38px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--profile-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+
+.removeTemplateButton:hover {
+  background: color-mix(in srgb, #c44428 8%, transparent);
+  color: #b83f27;
+}
+
+.removeTemplateButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .formError,
 .formNotice {
   margin: -10px 0 0;
@@ -556,6 +641,7 @@
 .primaryButton:focus-visible,
 .secondaryButton:focus-visible,
 .addTopicButton:focus-visible,
+.removeTemplateButton:focus-visible,
 .navLink:focus-visible,
 .accountMenu summary:focus-visible,
 .topicTag button:focus-visible,
@@ -576,6 +662,11 @@
 
   .profileGrid {
     gap: 20px;
+  }
+
+  .templateCard {
+    gap: 12px;
+    padding: 13px;
   }
 }
 
@@ -653,6 +744,10 @@
   .profileGrid {
     grid-template-columns: minmax(0, 1fr);
     gap: 19px;
+  }
+
+  .templateCard {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .fullWidth,

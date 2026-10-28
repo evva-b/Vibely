@@ -1,95 +1,51 @@
 # Vibely
 
-Frontend приложения для генерации и редактирования контента социальных сетей.
-Данные авторизации и идеи пока хранятся локально в браузере; backend и API
-нейросети ещё не подключены.
+Vibely is a content-planning and AI-assisted social media writing application.
+The repository contains a Next.js frontend and a FastAPI backend backed by the
+existing PostgreSQL database.
 
-## Структура frontend
+## Run locally
 
-```text
-src/
-├── app/
-│   ├── (auth)/
-│   │   ├── login/page.tsx
-│   │   ├── register/page.tsx
-│   │   └── layout.tsx
-│   ├── (dashboard)/
-│   │   ├── board/page.tsx
-│   │   ├── chats/page.tsx
-│   │   ├── profile/page.tsx
-│   │   └── layout.tsx
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx
-├── components/
-│   ├── layout/
-│   │   └── Header/
-│   ├── theme/
-│   │   └── ThemeProvider.tsx
-│   └── ui/
-│       ├── Button/
-│       ├── Input/
-│       ├── Logo/
-│       ├── Modal/
-│       └── Textarea/
-├── data/
-│   └── mock/
-├── features/
-│   ├── ai/
-│   │   ├── components/Chat/
-│   │   └── lib/chat-store.ts
-│   ├── auth/
-│   │   ├── components/
-│   │   │   ├── LoginForm/
-│   │   │   └── RegisterForm/
-│   │   └── lib/
-│   │       ├── local-auth.ts
-│   │       └── validation.ts
-│   ├── brands/components/
-│   └── posts/
-│       ├── components/Board/
-│       ├── lib/idea-store.ts
-│       └── types.ts
-├── lib/
-└── types/
+### Backend
+
+In `backend/.env`, configure `DATABASE_URL`, `JWT_SECRET_KEY`, and
+`OLLAMA_MODEL=gemma3:4b`. Ollama must be running locally at
+`http://127.0.0.1:11434`.
+
+```powershell
+cd backend
+.\.venv\Scripts\Activate.ps1
+uvicorn app.main:app --reload
 ```
 
-## Правила размещения кода
+FastAPI documentation is available at `http://127.0.0.1:8000/docs`.
 
-- `app/` — маршруты, layouts и глобальные стили Next.js. Группы `(auth)` и
-  `(dashboard)` организуют маршруты, не добавляя сегменты в URL.
-- `features/` — компоненты и логика отдельных предметных областей: авторизации,
-  публикаций, организаций и AI-чата. Специфичные для функции типы и API-код
-  следует хранить рядом с соответствующей функцией.
-- `components/ui/` — переиспользуемые базовые элементы интерфейса;
-  `components/layout/` — общие элементы оболочки приложения.
-- `data/mock/` — временные данные для разработки интерфейса до подключения API.
-- `lib/` — общие утилиты frontend; `types/` — типы, которые действительно
-  используются несколькими функциями.
+### Frontend
 
-Маршруты доступны по адресам `/login`, `/register`, `/board`, `/chats` и
-`/profile`. Корневой маршрут для нового посетителя перенаправляет на
-`/register`. Переключатель темы доступен на всех маршрутах, а выбранная тема
-сохраняется в браузере. На доске переключатель размещён в верхней панели вместе
-с действиями пользователя.
+Copy `.env.example` to `.env.local` and set
+`NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000`.
 
-Формы входа и регистрации проверяют email и пароль на клиенте и переводят
-пользователя на `/board`; пароль нигде не сохраняется. Доска поддерживает
-создание, редактирование и удаление идей, изображения до 2 МБ и перемещение
-карточек мышью или через меню статуса. Идеи сохраняются в `localStorage`.
-На мобильных экранах колонки располагаются вертикально и прокручиваются вместе
-со страницей; на широких экранах доска остаётся в виде четырёх колонок.
-Окно создания идеи включает быстрые шаблоны, тематическую метку, локальную
-подсказку структуры заметок и прикрепление изображения до 2 МБ; AI-генерация
-пока не подключена.
-Профиль компании позволяет редактировать описание бренда, аудиторию, тон
-общения, темы контента и фотографию; изменения сохраняются в `localStorage`.
-В чате идеи сгруппированы только по статусам доски; отдельного списка бесед
-нет. Выбор идеи открывает связанный с ней диалог с демо-заглушкой, а сообщения
-сохраняются в `localStorage`. К сообщению можно прикрепить до трёх изображений, PDF или TXT
-(до 2 МБ на файл и 5 МБ на сообщение). Ответы остаются локальными демо-ответами: AI пока не
-подключён и не анализирует вложения. Ответ можно скопировать, оценить или
-сохранить как черновик на доске.
+```powershell
+npm install
+npm run dev
+```
 
-Тёмная тема использует раздельные уровни фона, поверхности, полей и карточек,
-а также более заметные границы и приглушённые тексты с повышенной читаемостью.
+Open `http://localhost:3000`. Local CORS allows `localhost:3000` and
+`127.0.0.1:3000`.
+
+## Application behavior
+
+- Registration and sign-in use FastAPI. The access token is stored in browser
+  storage only; business data is loaded from the backend.
+- The board displays the statuses and posts returned by PostgreSQL. Post
+  creation, editing, movement, and deletion are persisted by the API.
+- The profile edits the active brand, its tone of voice, topics, and AI
+  templates. Templates can be created, updated, and deleted; the generator can
+  use a selected template.
+- The AI page displays persisted generation history and can create posts and
+  social-network adaptations through FastAPI and the configured local Ollama
+  model. It is an AI request history, not a multi-turn conversation store.
+- File upload and company avatar storage are not implemented by the backend;
+  the frontend does not persist file data locally.
+
+Run frontend checks with `npm run lint`, `npx tsc --noEmit`, and `npm run build`.

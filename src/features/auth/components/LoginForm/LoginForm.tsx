@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { ThemeToggle, useTheme } from "@/components/theme/ThemeProvider";
-import { saveMockUser } from "@/features/auth/lib/local-auth";
 import { isValidEmail } from "@/features/auth/lib/validation";
+import { api, ApiError, saveLoginToken } from "@/lib/api";
 import styles from "../RegisterForm/RegisterForm.module.css";
 
 export default function LoginForm() {
@@ -17,22 +17,39 @@ export default function LoginForm() {
   const [rememberMe, setRememberMe] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverError, setServerError] = useState("");
   const { theme } = useTheme();
 
   const emailIsValid = isValidEmail(email);
   const showEmailError = (emailTouched || submitted) && !emailIsValid;
   const showPasswordError = submitted && password.length === 0;
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitted(true);
+    setServerError("");
 
     if (!emailIsValid || password.length === 0) {
       return;
     }
 
-    saveMockUser(email);
-    router.push("/board");
+    setIsSubmitting(true);
+    try {
+      const session = await api.login({ email: email.trim(), password });
+      saveLoginToken(session.access_token, rememberMe);
+      router.replace("/board");
+    } catch (error) {
+      setServerError(
+        error instanceof ApiError
+          ? error.status === 401
+            ? "Неверная электронная почта или пароль."
+            : error.message
+          : "Не удалось выполнить вход. Попробуйте ещё раз.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -144,8 +161,10 @@ export default function LoginForm() {
             </p>
           )}
 
-          <button className={styles.submitButton} type="submit">
-            Войти
+          {serverError && <p className={styles.errorText} role="alert">{serverError}</p>}
+
+          <button className={styles.submitButton} disabled={isSubmitting} type="submit">
+            {isSubmitting ? "Входим…" : "Войти"}
           </button>
 
         </form>

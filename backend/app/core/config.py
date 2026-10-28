@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = Field(default=30, gt=0)
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_model: str = ""
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     model_config = SettingsConfigDict(
         env_file=".env",
