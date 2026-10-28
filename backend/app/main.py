@@ -6,6 +6,7 @@ from app.api.auth import router as auth_router
 from app.api.adaptations import router as adaptations_router
 from app.api.board_statuses import router as board_statuses_router
 from app.api.brands import router as brands_router
+from app.api.chats import router as chats_router
 from app.api.health import router as health_router
 from app.api.media import router as media_router
 from app.api.posts import router as posts_router
@@ -37,3 +38,4 @@ app.include_router(posts_router)
 app.include_router(adaptations_router)
 app.include_router(media_router)
 app.include_router(ai_router)
+app.include_router(chats_router)

@@ -1,0 +1,83 @@
+.accountMenu {
+  position: relative;
+}
+
+.accountMenu summary {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  overflow: hidden;
+  place-items: center;
+  border: 1px solid var(--app-border, #e8dfd9);
+  border-radius: 50%;
+  background: var(--app-surface, #ffffff);
+  color: var(--app-muted, #6b7280);
+  cursor: pointer;
+  list-style: none;
+}
+
+.accountMenu summary::-webkit-details-marker {
+  display: none;
+}
+
+.accountMenu summary svg {
+  width: 17px;
+  height: 17px;
+}
+
+.accountMenu summary img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.accountDropdown {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  width: max-content;
+  min-width: 185px;
+  gap: 4px;
+  padding: 7px;
+  border: 1px solid var(--app-border, #e8dfd9);
+  border-radius: 8px;
+  background: var(--app-surface, #ffffff);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 12%);
+}
+
+.accountDropdown a,
+.accountDropdown button {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 9px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--app-foreground, #1f2937);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  text-decoration: none;
+}
+
+.accountDropdown a:hover,
+.accountDropdown button:hover {
+  background: color-mix(in srgb, var(--app-foreground, #1f2937) 5%, var(--app-surface, #fff));
+}
+
+.accountDropdown svg {
+  width: 16px;
+  height: 16px;
+}
+
+.accountMenu summary:focus-visible,
+.accountDropdown a:focus-visible,
+.accountDropdown button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--app-accent, #d95d39) 45%, transparent);
+  outline-offset: 2px;
+}

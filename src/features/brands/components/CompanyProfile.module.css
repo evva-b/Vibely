@@ -6,6 +6,7 @@
   --profile-accent: var(--app-accent, #d95d39);
   --profile-border: color-mix(in srgb, var(--profile-text) 11%, transparent);
   --profile-soft: #fff0e9;
+  --profile-success: #28724f;
 
   min-height: 100vh;
   background: var(--profile-canvas);
@@ -20,6 +21,7 @@
   --profile-surface: #29231f;
   --profile-border: var(--app-border, #51453d);
   --profile-soft: #442e25;
+  --profile-success: #84d4a9;
 }
 
 .topbar {
@@ -308,7 +310,7 @@
   stroke-width: 1.5;
 }
 
-.avatarImage {
+.avatarFrame > img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -517,89 +519,56 @@
   border-color: var(--profile-accent);
 }
 
-.templateCard {
+.quickTopics {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  padding: 16px;
-  border: 1px solid var(--profile-border);
-  border-radius: 10px;
-  background: var(--profile-surface);
+  gap: 9px;
+  margin-top: 6px;
 }
 
-.templateCard label {
-  display: grid;
-  min-width: 0;
-  gap: 7px;
+.quickTopicsLabel {
   color: var(--profile-muted);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
-.templateCard input,
-.templateCard textarea {
-  width: 100%;
-  min-height: 39px;
-  padding: 9px 11px;
-  border: 1px solid var(--profile-border);
-  border-radius: 7px;
-  outline: none;
-  background: var(--profile-surface);
-  color: var(--profile-text);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 400;
-}
-
-.templateCard textarea {
-  min-height: 82px;
-  line-height: 1.5;
-  resize: vertical;
-}
-
-.templateCard input:focus,
-.templateCard textarea:focus {
-  border-color: var(--profile-accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--profile-accent) 15%, transparent);
-}
-
-.templateCard input:disabled,
-.templateCard textarea:disabled {
-  opacity: 0.65;
-}
-
-.templatePrompt,
-.templateActions {
-  grid-column: 1 / -1;
-}
-
-.templateActions {
-  display: flex;
-  flex-wrap: wrap;
+.quickTopicButton {
+  display: inline-flex;
+  min-height: 34px;
   align-items: center;
-  gap: 9px;
-}
-
-.removeTemplateButton {
-  min-height: 38px;
+  gap: 7px;
   padding: 0 11px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
+  border: 1px solid var(--profile-border);
+  border-radius: 999px;
+  background: var(--profile-surface);
   color: var(--profile-muted);
   cursor: pointer;
   font: inherit;
-  font-size: 12px;
+  font-size: 11px;
+  transition:
+    border-color 140ms ease,
+    color 140ms ease,
+    background-color 140ms ease;
 }
 
-.removeTemplateButton:hover {
-  background: color-mix(in srgb, #c44428 8%, transparent);
-  color: #b83f27;
+.quickTopicButton:hover:not(:disabled) {
+  border-color: var(--profile-accent);
+  background: var(--profile-soft);
+  color: var(--profile-accent);
 }
 
-.removeTemplateButton:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
+.quickTopicButton:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.quickTopicButton svg {
+  width: 13px;
+  height: 13px;
+}
+
+.quickTopicAdded {
+  border-color: color-mix(in srgb, #2e7d58 25%, transparent);
+  color: var(--profile-success);
 }
 
 .formError,
@@ -641,7 +610,7 @@
 .primaryButton:focus-visible,
 .secondaryButton:focus-visible,
 .addTopicButton:focus-visible,
-.removeTemplateButton:focus-visible,
+.quickTopicButton:focus-visible,
 .navLink:focus-visible,
 .accountMenu summary:focus-visible,
 .topicTag button:focus-visible,
@@ -664,10 +633,6 @@
     gap: 20px;
   }
 
-  .templateCard {
-    gap: 12px;
-    padding: 13px;
-  }
 }
 
 @media (max-width: 600px) {
@@ -744,10 +709,6 @@
   .profileGrid {
     grid-template-columns: minmax(0, 1fr);
     gap: 19px;
-  }
-
-  .templateCard {
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .fullWidth,

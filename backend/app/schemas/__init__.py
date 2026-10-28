@@ -10,11 +10,20 @@ from app.schemas.ai import (
     GeneratedPostContent,
     GeneratedPostRead,
     PostGenerateRequest,
+    StructureSuggestionRead,
+    StructureSuggestionRequest,
 )
 from app.schemas.ai_request import AIRequestRead
 from app.schemas.board import BoardColumnRead
 from app.schemas.board_status import BoardStatusRead
 from app.schemas.brand import BrandCreate, BrandRead, BrandUpdate
+from app.schemas.chat import (
+    ChatFeedbackRead,
+    ChatFeedbackUpdate,
+    ChatMessageRead,
+    PostChatMessageCreate,
+    PostChatRead,
+)
 from app.schemas.media_file import MediaFileCreate, MediaFileRead
 from app.schemas.post import PostCreate, PostRead, PostUpdate
 from app.schemas.social_network import SocialNetworkRead
@@ -38,6 +47,9 @@ __all__ = [
     "BrandCreate",
     "BrandRead",
     "BrandUpdate",
+    "ChatFeedbackRead",
+    "ChatFeedbackUpdate",
+    "ChatMessageRead",
     "MediaFileRead",
     "MediaFileCreate",
     "GeneratedAdaptationContent",
@@ -45,6 +57,8 @@ __all__ = [
     "GeneratedPostContent",
     "GeneratedPostRead",
     "PostCreate",
+    "PostChatMessageCreate",
+    "PostChatRead",
     "PostGenerateRequest",
     "PostRead",
     "PostUpdate",
@@ -58,6 +72,8 @@ __all__ = [
     "TopicCreate",
     "TopicRead",
     "TopicUpdate",
+    "StructureSuggestionRead",
+    "StructureSuggestionRequest",
     "UserCreate",
     "UserRead",
 ]

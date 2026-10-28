@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useState, useSyncExternalStore, type DragEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, LogOut, MessageCircle, Pencil, Plus, Sparkles, Trash2, UserRound } from "lucide-react";
+import { ArrowRight, MessageCircle, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeProvider";
+import UserAvatarMenu from "@/components/navigation/UserAvatarMenu";
 import IdeaDialog from "@/features/posts/components/Board/IdeaDialog";
-import { clearAccessToken } from "@/features/auth/lib/auth-token";
 import { api } from "@/lib/api";
 import type { BoardColumn, BoardStatus, Brand, Post, PostCreate } from "@/types/api";
 import {
@@ -33,6 +33,7 @@ export default function Board() {
   const [error, setError] = useState("");
   const [dialogStatusId, setDialogStatusId] = useState<string | null>(null);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [starterContent, setStarterContent] = useState<{ title: string; text: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [draggedPostId, setDraggedPostId] = useState<string | null>(null);
   const openDialogRequested = useSyncExternalStore(
@@ -73,6 +74,7 @@ export default function Board() {
   const closeDialog = useCallback(() => {
     setDialogStatusId(null);
     setEditingPost(null);
+    setStarterContent(null);
     clearIdeaDialogOpenRequest();
   }, []);
 
@@ -130,11 +132,6 @@ export default function Board() {
     if (postId) void movePost(postId, status.id);
   }
 
-  function handleSignOut() {
-    clearAccessToken();
-    router.replace("/login");
-  }
-
   const requestedStatusId = openDialogRequested ? columns[0]?.id : undefined;
 
   return (
@@ -146,7 +143,7 @@ export default function Board() {
         </Link>
         <nav aria-label="Основная навигация" className={styles.navigation}>
           <Link aria-current="page" className={styles.navActive} href="/board">Доска идей</Link>
-          <Link className={styles.navLink} href="/chats">История AI</Link>
+          <Link className={styles.navLink} href="/chats">Чаты</Link>
         </nav>
         <div className={styles.topbarActions}>
           <button
@@ -154,6 +151,7 @@ export default function Board() {
             disabled={!brand || columns.length === 0}
             onClick={() => {
               setEditingPost(null);
+              setStarterContent(null);
               setDialogStatusId(columns[0]?.id ?? null);
             }}
             type="button"
@@ -161,13 +159,7 @@ export default function Board() {
             <Plus aria-hidden="true" /><span>Новая идея</span>
           </button>
           <ThemeToggle inline />
-          <details className={styles.accountMenu}>
-            <summary aria-label="Меню профиля"><UserRound aria-hidden="true" /></summary>
-            <div className={styles.accountDropdown}>
-              <Link href="/profile"><UserRound aria-hidden="true" />Профиль компании</Link>
-              <button onClick={handleSignOut} type="button"><LogOut aria-hidden="true" />Выйти</button>
-            </div>
-          </details>
+          <UserAvatarMenu />
         </div>
       </header>
 
@@ -215,6 +207,7 @@ export default function Board() {
                       className={styles.iconButton}
                       onClick={() => {
                         setEditingPost(null);
+                        setStarterContent(null);
                         setDialogStatusId(column.id);
                       }}
                       type="button"
@@ -222,6 +215,24 @@ export default function Board() {
                   </div>
                 </header>
                 <div className={styles.cardList}>
+                  {column.id === columns[0]?.id && (
+                    <article className={styles.onboardingCard}>
+                      <span className={styles.onboardingIcon}><Sparkles aria-hidden="true" /></span>
+                      <h3>Превратите идею в контент</h3>
+                      <p>Создайте публикацию, а затем обсуждайте и улучшайте её в отдельном AI-чате.</p>
+                      <button
+                        onClick={() => {
+                          setEditingPost(null);
+                          setStarterContent({
+                            title: "Знакомство с брендом",
+                            text: "Расскажите, чем занимается ваш бренд, какую пользу он приносит и почему его стоит выбрать.",
+                          });
+                          setDialogStatusId(column.id);
+                        }}
+                        type="button"
+                      ><Plus aria-hidden="true" />Создать первую идею</button>
+                    </article>
+                  )}
                   {column.posts.map((post) => (
                     <article
                       className={`${styles.ideaCard} ${draggedPostId === post.id ? styles.dragging : ""}`}
@@ -238,6 +249,12 @@ export default function Board() {
                         <div className={styles.ideaCardHeader}>
                           <h3>{post.title}</h3>
                           <div className={styles.ideaActions}>
+                            <button
+                              aria-label={`Открыть чат: ${post.title}`}
+                              className={styles.cardAction}
+                              onClick={() => router.push(`/chats/${post.id}`)}
+                              type="button"
+                            ><MessageCircle aria-hidden="true" /></button>
                             <button
                               aria-label={`Редактировать: ${post.title}`}
                               className={styles.cardAction}
@@ -277,6 +294,7 @@ export default function Board() {
                       className={styles.emptyAddButton}
                       onClick={() => {
                         setEditingPost(null);
+                        setStarterContent(null);
                         setDialogStatusId(column.id);
                       }}
                       type="button"
@@ -293,6 +311,9 @@ export default function Board() {
       </Link>
       {(dialogStatusId || editingPost || requestedStatusId) && (
         <IdeaDialog
+          brandId={brand?.id ?? ""}
+          initialTitle={starterContent?.title}
+          initialText={starterContent?.text}
           isSaving={isSaving}
           post={editingPost ?? undefined}
           statuses={columns.map(({ id, name, position }) => ({ id, name, position }))}

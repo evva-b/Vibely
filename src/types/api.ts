@@ -58,22 +58,6 @@ export type Topic = {
 export type TopicCreate = { name: string };
 export type TopicUpdate = Partial<TopicCreate>;
 
-export type Template = {
-  id: string;
-  brand_id: string;
-  name: string;
-  description: string | null;
-  prompt: string;
-};
-
-export type TemplateCreate = {
-  name: string;
-  description: string | null;
-  prompt: string;
-};
-
-export type TemplateUpdate = Partial<TemplateCreate>;
-
 export type BoardStatus = {
   id: string;
   name: string;
@@ -103,11 +87,6 @@ export type BoardColumn = BoardStatus & {
   posts: Post[];
 };
 
-export type GeneratedPostResponse = {
-  post: Post;
-  ai_request_id: string;
-};
-
 export type AIRequest = {
   id: string;
   template_id: string | null;
@@ -117,6 +96,39 @@ export type AIRequest = {
   response: string | null;
   model: string;
   created_at: string;
+};
+
+export type ChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+  kind: "post" | "adaptation";
+  platform: string | null;
+  feedback: "up" | "down" | null;
+  image_data?: string | null;
+  image_type?: "image/jpeg" | "image/png" | "image/webp" | null;
+};
+
+export type PostChat = {
+  post: Post;
+  request: AIRequest;
+  messages: ChatMessage[];
+  context: {
+    social_network_id: string | null;
+    social_network: string | null;
+    style: string | null;
+  };
+};
+
+export type ChatFeedbackRead = {
+  message_id: string;
+  rating: "up" | "down" | null;
+};
+
+export type StructureSuggestion = {
+  structure: string;
+  missing_profile_fields: string[];
 };
 
 export type SocialNetwork = {

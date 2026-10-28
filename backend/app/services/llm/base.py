@@ -1,4 +1,4 @@
-from typing import Protocol
+from typing import Mapping, Protocol, Sequence
 
 
 class LLMError(Exception):
@@ -17,6 +17,11 @@ class LLMProvider(Protocol):
     @property
     def model_name(self) -> str: ...
 
-    def generate_json(self, prompt: str) -> str: ...
+    def generate_json(
+        self,
+        prompt: str,
+        images: Sequence[bytes] = (),
+        format_schema: Mapping[str, object] | None = None,
+    ) -> str: ...
 
     def check_availability(self) -> None: ...

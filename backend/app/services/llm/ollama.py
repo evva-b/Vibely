@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Any
+from typing import Any, Mapping, Sequence
 
 import httpx
 
@@ -95,17 +95,29 @@ class OllamaProvider:
                 f"Configured Ollama model '{self._model_name}' is not installed."
             )
 
-    def generate_json(self, prompt: str) -> str:
+    def generate_json(
+        self,
+        prompt: str,
+        images: Sequence[bytes] = (),
+        format_schema: Mapping[str, object] | None = None,
+    ) -> str:
         self._require_model()
+        request_body: dict[str, Any] = {
+            "model": self._model_name,
+            "prompt": prompt,
+            "stream": False,
+            "format": dict(format_schema) if format_schema is not None else "json",
+        }
+        if images:
+            import base64
+
+            request_body["images"] = [
+                base64.b64encode(image).decode("ascii") for image in images
+            ]
         try:
             response = httpx.post(
                 f"{self._base_url}/api/generate",
-                json={
-                    "model": self._model_name,
-                    "prompt": prompt,
-                    "stream": False,
-                    "format": "json",
-                },
+                json=request_body,
                 timeout=self._timeout,
                 trust_env=False,
             )

@@ -399,6 +399,73 @@
   gap: 10px;
 }
 
+.onboardingCard {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  padding: 14px;
+  border: 1px dashed color-mix(in srgb, var(--board-accent) 38%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--soft-accent) 72%, var(--card-background));
+}
+
+.onboardingIcon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--board-surface);
+  color: var(--board-accent);
+}
+
+.onboardingIcon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.onboardingCard h3 {
+  margin: 0;
+  color: var(--board-text);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.onboardingCard p {
+  margin: 0;
+  color: var(--board-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.onboardingCard button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--board-accent) 25%, transparent);
+  border-radius: 6px;
+  background: var(--board-surface);
+  color: var(--board-accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.onboardingCard button:hover {
+  border-color: var(--board-accent);
+  background: var(--soft-accent);
+}
+
+.onboardingCard button svg {
+  width: 14px;
+  height: 14px;
+}
+
 .ideaCard {
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--board-text) 7%, transparent);
@@ -718,7 +785,7 @@
   height: 15px;
 }
 
-.templateSection {
+.quickStartSection {
   display: grid;
   gap: 11px;
 }
@@ -729,13 +796,13 @@
   font-weight: 650;
 }
 
-.templateList {
+.quickStartList {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.templateChip {
+.quickStartChip {
   min-height: 32px;
   padding: 0 11px;
   border: 1px solid var(--board-border);
@@ -751,7 +818,7 @@
     background-color 140ms ease;
 }
 
-.templateChip:hover {
+.quickStartChip:hover {
   border-color: color-mix(in srgb, var(--board-accent) 45%, transparent);
   background: var(--soft-accent);
   color: var(--board-accent);
@@ -895,6 +962,17 @@
   line-height: 1.45;
 }
 
+.structureNotice {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--board-accent) 25%, transparent);
+  border-radius: 7px;
+  background: var(--soft-accent);
+  color: var(--board-text);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .dialogActions {
   display: flex;
   justify-content: flex-end;
@@ -1028,6 +1106,21 @@ summary:focus-visible {
 
   .ideaActions {
     opacity: 1;
+  }
+
+  .onboardingCard {
+    grid-template-columns: 30px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .onboardingCard h3,
+  .onboardingCard p,
+  .onboardingCard button {
+    grid-column: 2;
+  }
+
+  .onboardingIcon {
+    grid-row: 1 / span 2;
   }
 
   .emptyAddButton {

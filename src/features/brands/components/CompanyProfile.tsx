@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
+import Image from "next/image";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Building2, LogOut, Plus, UserRound, X } from "lucide-react";
+import { ImagePlus, Plus, Trash2, UserRound, X } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeProvider";
-import { clearAccessToken } from "@/features/auth/lib/auth-token";
+import UserAvatarMenu, { notifyAvatarChanged } from "@/components/navigation/UserAvatarMenu";
 import { api, ApiError } from "@/lib/api";
-import type { Brand, Template, Topic, ToneOfVoice } from "@/types/api";
+import { quickStarts } from "@/features/posts/data/quick-starts";
+import type { Brand, Topic, ToneOfVoice, UserRead } from "@/types/api";
 import styles from "./CompanyProfile.module.css";
 
 type ProfileDraft = {
@@ -52,17 +53,12 @@ function toDraft(brand: Brand | null, tone: ToneOfVoice | null): ProfileDraft {
 }
 
 export default function CompanyProfile() {
-  const router = useRouter();
+  const avatarInput = useRef<HTMLInputElement>(null);
   const [brand, setBrand] = useState<Brand | null>(null);
+  const [user, setUser] = useState<UserRead | null>(null);
+  const [avatar, setAvatar] = useState<string | null>(null);
   const [tone, setTone] = useState<ToneOfVoice | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [originalTemplates, setOriginalTemplates] = useState<Template[]>([]);
-  const [newTemplate, setNewTemplate] = useState({
-    name: "",
-    description: "",
-    prompt: "",
-  });
   const [draft, setDraft] = useState<ProfileDraft>(emptyDraft);
   const [originalTopics, setOriginalTopics] = useState<Topic[]>([]);
   const [newTopic, setNewTopic] = useState("");
@@ -73,13 +69,21 @@ export default function CompanyProfile() {
 
   const loadProfile = useCallback(async () => {
     try {
-      const brands = await api.listBrands();
+      const [brands, currentUser] = await Promise.all([
+        api.listBrands(),
+        api.currentUser(),
+      ]);
       const activeBrand = brands[0] ?? null;
+      setUser(currentUser);
+      try {
+        setAvatar(window.localStorage.getItem(`vibely:user-avatar:${currentUser.id}`));
+      } catch {
+        setError("Браузер запретил доступ к локальному хранилищу аватара.");
+      }
       let activeTone: ToneOfVoice | null = null;
       let brandTopics: Topic[] = [];
-      let brandTemplates: Template[] = [];
       if (activeBrand) {
-        const [topicResult, toneResult, templateResult] = await Promise.all([
+        const [topicResult, toneResult] = await Promise.all([
           api.listTopics(activeBrand.id),
           api.getTone(activeBrand.id).catch((requestError: unknown) => {
             if (requestError instanceof ApiError && requestError.status === 404) {
@@ -87,18 +91,14 @@ export default function CompanyProfile() {
             }
             throw requestError;
           }),
-          api.listTemplates(activeBrand.id),
         ]);
         brandTopics = topicResult;
         activeTone = toneResult;
-        brandTemplates = templateResult;
       }
       setBrand(activeBrand);
       setTone(activeTone);
       setTopics(brandTopics);
       setOriginalTopics(brandTopics);
-      setTemplates(brandTemplates);
-      setOriginalTemplates(brandTemplates);
       setDraft(toDraft(activeBrand, activeTone));
     } catch (requestError) {
       setError(
@@ -128,14 +128,18 @@ export default function CompanyProfile() {
   }
 
   function addTopic() {
-    const name = newTopic.trim();
+    addTopicName(newTopic);
+    setNewTopic("");
+  }
+
+  function addTopicName(value: string) {
+    const name = value.trim();
     if (!name) return;
     if (topics.some((topic) => topic.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
       setError("Такая тема уже добавлена.");
       return;
     }
     setTopics((current) => [...current, { id: `new-${crypto.randomUUID()}`, brand_id: brand?.id ?? "", name }]);
-    setNewTopic("");
     setError("");
   }
 
@@ -148,67 +152,54 @@ export default function CompanyProfile() {
 
   function handleCancel() {
     setTopics(originalTopics);
-    setTemplates(originalTemplates);
     setDraft(toDraft(brand, tone));
-    setNewTemplate({ name: "", description: "", prompt: "" });
     setNewTopic("");
     setError("");
     setNotice("");
   }
 
-  async function createTemplate() {
-    if (!brand || !newTemplate.name.trim() || !newTemplate.prompt.trim()) return;
-    setSaving(true);
-    setError("");
-    try {
-      const created = await api.createTemplate(brand.id, {
-        name: newTemplate.name.trim(),
-        description: newTemplate.description.trim() || null,
-        prompt: newTemplate.prompt.trim(),
-      });
-      setTemplates((current) => [...current, created]);
-      setOriginalTemplates((current) => [...current, created]);
-      setNewTemplate({ name: "", description: "", prompt: "" });
-      setNotice("Шаблон добавлен.");
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Не удалось создать шаблон.");
-    } finally {
-      setSaving(false);
+  function handleAvatarSelection(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !user) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError("Выберите изображение в формате JPG, PNG или WebP.");
+      return;
     }
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Размер аватара не должен превышать 2 МБ.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => setError("Не удалось прочитать выбранное изображение.");
+    reader.onload = () => {
+      if (typeof reader.result !== "string") {
+        setError("Не удалось обработать выбранное изображение.");
+        return;
+      }
+      try {
+        window.localStorage.setItem(`vibely:user-avatar:${user.id}`, reader.result);
+        setAvatar(reader.result);
+        notifyAvatarChanged();
+        setError("");
+        setNotice("Аватар сохранён в этом браузере.");
+      } catch {
+        setError("Недостаточно места в локальном хранилище браузера для аватара.");
+      }
+    };
+    reader.readAsDataURL(file);
   }
 
-  async function saveTemplate(template: Template) {
-    setSaving(true);
-    setError("");
+  function removeAvatar() {
+    if (!user) return;
     try {
-      const updated = await api.updateTemplate(template.id, {
-        name: template.name.trim(),
-        description: template.description?.trim() || null,
-        prompt: template.prompt.trim(),
-      });
-      setTemplates((current) => current.map((item) => item.id === updated.id ? updated : item));
-      setOriginalTemplates((current) => current.map((item) => item.id === updated.id ? updated : item));
-      setNotice("Шаблон сохранён.");
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Не удалось сохранить шаблон.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function deleteTemplate(template: Template) {
-    if (!window.confirm(`Удалить шаблон «${template.name}»?`)) return;
-    setSaving(true);
-    setError("");
-    try {
-      await api.deleteTemplate(template.id);
-      setTemplates((current) => current.filter((item) => item.id !== template.id));
-      setOriginalTemplates((current) => current.filter((item) => item.id !== template.id));
-      setNotice("Шаблон удалён.");
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Не удалось удалить шаблон.");
-    } finally {
-      setSaving(false);
+      window.localStorage.removeItem(`vibely:user-avatar:${user.id}`);
+      setAvatar(null);
+      notifyAvatarChanged();
+      setError("");
+      setNotice("Аватар удалён.");
+    } catch {
+      setError("Не удалось удалить аватар из локального хранилища браузера.");
     }
   }
 
@@ -268,11 +259,6 @@ export default function CompanyProfile() {
     }
   }
 
-  function handleSignOut() {
-    clearAccessToken();
-    router.replace("/login");
-  }
-
   return (
     <main className={styles.app}>
       <header className={styles.topbar}>
@@ -281,16 +267,11 @@ export default function CompanyProfile() {
         </Link>
         <nav aria-label="Основная навигация" className={styles.navigation}>
           <Link className={styles.navLink} href="/board">Доска идей</Link>
-          <Link className={styles.navLink} href="/chats">История AI</Link>
+          <Link className={styles.navLink} href="/chats">Чаты</Link>
         </nav>
         <div className={styles.topbarActions}>
           <ThemeToggle inline />
-          <details className={styles.accountMenu}>
-            <summary aria-label="Меню профиля"><UserRound aria-hidden="true" /></summary>
-            <div className={styles.accountDropdown}>
-              <button onClick={handleSignOut} type="button"><LogOut aria-hidden="true" />Выйти</button>
-            </div>
-          </details>
+          <UserAvatarMenu />
         </div>
       </header>
 
@@ -315,15 +296,37 @@ export default function CompanyProfile() {
 
           {!loading && (
             <div className={styles.profileGrid}>
-              {!brand && (
-                <div className={styles.avatarSection}>
-                  <div className={styles.avatarFrame}><Building2 aria-hidden="true" /></div>
-                  <div className={styles.avatarDetails}>
-                    <strong>Настройка организации</strong>
-                    <span>Создайте первый профиль бренда, чтобы начать работу.</span>
-                  </div>
+              <div className={styles.avatarSection}>
+                <div className={styles.avatarFrame}>
+                  {avatar
+                    ? <Image alt={`Аватар пользователя ${user?.name ?? ""}`} height={92} src={avatar} unoptimized width={92} />
+                    : <UserRound aria-hidden="true" />}
                 </div>
-              )}
+                <div className={styles.avatarDetails}>
+                  <strong>Аватар пользователя</strong>
+                  <span>{avatar ? "Изображение сохранено в этом браузере." : "Добавьте изображение профиля. Оно хранится только в этом браузере."}</span>
+                  <input
+                    accept="image/png,image/jpeg,image/webp"
+                    aria-label="Выбрать изображение аватара"
+                    className={styles.visuallyHidden}
+                    onChange={handleAvatarSelection}
+                    ref={avatarInput}
+                    type="file"
+                  />
+                  <button
+                    className={styles.avatarButton}
+                    disabled={!user}
+                    onClick={() => avatarInput.current?.click()}
+                    type="button"
+                  ><ImagePlus aria-hidden="true" />{avatar ? "Заменить изображение" : "Выбрать изображение"}</button>
+                  {avatar && (
+                    <button className={styles.removeAvatarButton} onClick={removeAvatar} type="button">
+                      <Trash2 aria-hidden="true" />Удалить
+                    </button>
+                  )}
+                  {!brand && <span>Создайте профиль бренда ниже, чтобы начать работу.</span>}
+                </div>
+              </div>
               <label className={styles.field}>
                 <span>Название бренда</span>
                 <input
@@ -450,100 +453,26 @@ export default function CompanyProfile() {
                   </button>
                 </div>
                 <small>Нажмите Enter, чтобы добавить тему. Удалить тег можно кнопкой ×.</small>
-              </div>
-              <section className={`${styles.field} ${styles.fullWidth}`} aria-labelledby="template-heading">
-                <span id="template-heading">Шаблоны генерации</span>
-                {!brand && <small>Сначала сохраните профиль бренда.</small>}
-                {templates.map((template) => (
-                  <article className={styles.templateCard} key={template.id}>
-                    <label>
-                      <span>Название шаблона</span>
-                      <input
-                        disabled={saving}
-                        maxLength={150}
-                        onChange={(event) => setTemplates((current) => current.map((item) =>
-                          item.id === template.id ? { ...item, name: event.target.value } : item,
-                        ))}
-                        value={template.name}
-                      />
-                    </label>
-                    <label>
-                      <span>Описание</span>
-                      <input
-                        disabled={saving}
-                        onChange={(event) => setTemplates((current) => current.map((item) =>
-                          item.id === template.id ? { ...item, description: event.target.value } : item,
-                        ))}
-                        value={template.description ?? ""}
-                      />
-                    </label>
-                    <label className={styles.templatePrompt}>
-                      <span>Инструкция для AI</span>
-                      <textarea
-                        disabled={saving}
-                        onChange={(event) => setTemplates((current) => current.map((item) =>
-                          item.id === template.id ? { ...item, prompt: event.target.value } : item,
-                        ))}
-                        rows={3}
-                        value={template.prompt}
-                      />
-                    </label>
-                    <div className={styles.templateActions}>
-                      <button
-                        className={styles.secondaryButton}
-                        disabled={saving || !template.name.trim() || !template.prompt.trim()}
-                        onClick={() => void saveTemplate(template)}
-                        type="button"
-                      >Сохранить шаблон</button>
-                      <button
-                        className={styles.removeTemplateButton}
-                        disabled={saving}
-                        onClick={() => void deleteTemplate(template)}
-                        type="button"
-                      >Удалить</button>
-                    </div>
-                  </article>
-                ))}
-                <div className={styles.templateCard}>
-                  <label>
-                    <span>Название шаблона</span>
-                    <input
-                      disabled={saving || !brand}
-                      maxLength={150}
-                      onChange={(event) => setNewTemplate((current) => ({ ...current, name: event.target.value }))}
-                      placeholder="Например, экспертный совет"
-                      value={newTemplate.name}
-                    />
-                  </label>
-                  <label>
-                    <span>Описание</span>
-                    <input
-                      disabled={saving || !brand}
-                      onChange={(event) => setNewTemplate((current) => ({ ...current, description: event.target.value }))}
-                      placeholder="Короткое пояснение"
-                      value={newTemplate.description}
-                    />
-                  </label>
-                  <label className={styles.templatePrompt}>
-                    <span>Инструкция для AI</span>
-                    <textarea
-                      disabled={saving || !brand}
-                      onChange={(event) => setNewTemplate((current) => ({ ...current, prompt: event.target.value }))}
-                      placeholder="Опишите структуру и пожелания к публикации"
-                      rows={3}
-                      value={newTemplate.prompt}
-                    />
-                  </label>
-                  <div className={styles.templateActions}>
-                    <button
-                      className={styles.addTopicButton}
-                      disabled={saving || !brand || !newTemplate.name.trim() || !newTemplate.prompt.trim()}
-                      onClick={() => void createTemplate()}
-                      type="button"
-                    ><Plus aria-hidden="true" />Добавить шаблон</button>
+                <div className={styles.quickTopics}>
+                  <span className={styles.quickTopicsLabel}>Быстрые темы</span>
+                  <div className={styles.topicList}>
+                    {quickStarts.map((suggestion) => {
+                      const alreadyAdded = topics.some(
+                        (topic) => topic.name.toLocaleLowerCase() === suggestion.toLocaleLowerCase(),
+                      );
+                      return (
+                        <button
+                          className={`${styles.quickTopicButton} ${alreadyAdded ? styles.quickTopicAdded : ""}`}
+                          disabled={saving || alreadyAdded}
+                          key={suggestion}
+                          onClick={() => addTopicName(suggestion)}
+                          type="button"
+                        >{suggestion}{alreadyAdded ? " · Добавлена" : <Plus aria-hidden="true" />}</button>
+                      );
+                    })}
                   </div>
                 </div>
-              </section>
+              </div>
             </div>
           )}
           <div className={styles.mobileActions}>

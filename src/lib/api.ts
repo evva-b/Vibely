@@ -1,5 +1,4 @@
 import type {
-  AIRequest,
   AdaptedContent,
   AdaptationGenerateResponse,
   AuthToken,
@@ -7,14 +6,13 @@ import type {
   Brand,
   BrandCreate,
   BrandUpdate,
-  GeneratedPostResponse,
+  ChatFeedbackRead,
   Post,
+  PostChat,
   PostCreate,
   PostUpdate,
   SocialNetwork,
-  Template,
-  TemplateCreate,
-  TemplateUpdate,
+  StructureSuggestion,
   ToneOfVoice,
   ToneOfVoiceCreate,
   Topic,
@@ -88,7 +86,10 @@ async function request<T>(
 
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
+    const requestUrl = path.startsWith("/api/backend/")
+      ? path
+      : `${API_BASE_URL}${path}`;
+    response = await fetch(requestUrl, {
       ...init,
       headers,
       cache: "no-store",
@@ -177,27 +178,6 @@ export const api = {
       method: "DELETE",
       authenticated: true,
     }),
-  listTemplates: (brandId: string) =>
-    request<Template[]>(`/api/brands/${brandId}/templates`, {
-      authenticated: true,
-    }),
-  createTemplate: (brandId: string, body: TemplateCreate) =>
-    request<Template>(`/api/brands/${brandId}/templates`, {
-      method: "POST",
-      body: json(body),
-      authenticated: true,
-    }),
-  updateTemplate: (id: string, body: TemplateUpdate) =>
-    request<Template>(`/api/templates/${id}`, {
-      method: "PATCH",
-      body: json(body),
-      authenticated: true,
-    }),
-  deleteTemplate: (id: string) =>
-    request<void>(`/api/templates/${id}`, {
-      method: "DELETE",
-      authenticated: true,
-    }),
   getBoard: (brandId: string) =>
     request<BoardColumn[]>(`/api/brands/${brandId}/board`, {
       authenticated: true,
@@ -221,28 +201,62 @@ export const api = {
       method: "DELETE",
       authenticated: true,
     }),
-  generatePost: (brandId: string, body: {
-    prompt: string;
-    template_id?: string;
-    board_status_id?: string;
-  }) =>
-    request<GeneratedPostResponse>(`/api/brands/${brandId}/generate-post`, {
+  suggestStructure: (brandId: string, title: string) =>
+    request<StructureSuggestion>(`/api/brands/${brandId}/suggest-structure`, {
+      method: "POST",
+      body: json({ title }),
+      authenticated: true,
+    }),
+  openPostChat: (postId: string) =>
+    request<PostChat>(`/api/posts/${postId}/chat`, {
+      method: "POST",
+      authenticated: true,
+    }),
+  updatePostChatContext: (
+    postId: string,
+    body: { social_network_id: string; style: string },
+  ) =>
+    request<PostChat>(`/api/posts/${postId}/chat/context`, {
+      method: "PATCH",
+      body: json(body),
+      authenticated: true,
+    }),
+  sendPostChatMessage: (
+    postId: string,
+    body: {
+      prompt: string;
+      social_network_id?: string;
+      style?: string;
+      image_data?: string;
+      image_type?: "image/jpeg" | "image/png" | "image/webp";
+    },
+  ) =>
+    request<PostChat>(`/api/backend/posts/${postId}/chat/messages`, {
       method: "POST",
       body: json(body),
       authenticated: true,
     }),
-  listAIRequests: (brandId: string) =>
-    request<AIRequest[]>(`/api/brands/${brandId}/ai-requests`, {
-      authenticated: true,
-    }),
+  setChatFeedback: (
+    requestId: string,
+    messageId: string,
+    rating: "up" | "down" | null,
+  ) =>
+    request<ChatFeedbackRead>(
+      `/api/ai-requests/${requestId}/messages/${messageId}/feedback`,
+      {
+        method: "PATCH",
+        body: json({ rating }),
+        authenticated: true,
+      },
+    ),
   listSocialNetworks: () =>
     request<SocialNetwork[]>("/api/social-networks", { authenticated: true }),
-  generateAdaptation: (postId: string, socialNetworkId: string) =>
+  generateAdaptation: (postId: string, socialNetworkId: string, style: string) =>
     request<AdaptationGenerateResponse>(
       `/api/posts/${postId}/generate-adaptation`,
       {
         method: "POST",
-        body: json({ social_network_id: socialNetworkId }),
+        body: json({ social_network_id: socialNetworkId, style }),
         authenticated: true,
       },
     ),
